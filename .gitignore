@@ -51,4 +51,6 @@ poc/data/
 poc/.env
 poc/.dev.vars
 poc/.wrangler/
-poc/server/node_modules/
+poc/server/node_modules
+poc/tests/node_modules
+node_modules
