@@ -95,6 +95,23 @@ Placer un proxy TLS devant (Caddy, Nginx) pour obtenir une adresse `wss://`. Ré
 
 **Tests :** `tests/mock_kyutai_stt.py` reproduit le protocole de `moshi-server` (authentification, trames de 1 920 échantillons float32, Word/Step/Marker) ; l’encodage msgpack du POC est identique octet pour octet à celui du client officiel. `tests/stt_bridge_test.mjs` : 8/8 sur l’hôte Node **et** sur Cloudflare Workers (Wrangler local). Parcours navigateur avec micro simulé : capture, envoi, mots affichés en direct, vidage final récupérant le dernier mot, sur Node et sur Workers. **Non testé :** le vrai modèle (aucun GPU dans l’environnement de développement, Hugging Face inaccessible) ; la qualité de transcription n’est donc pas encore mesurée sur nos cas d’usage.
 
+## Voix de Lina : Kyutai Pocket TTS
+
+[Pocket TTS](https://kyutai.org/tts/) (Kyutai, licence MIT) remplace la voix synthétique du navigateur, dont la qualité varie d’un appareil à l’autre. Le modèle compte 100 M de paramètres et **tourne sur un simple processeur**, sans GPU. Il propose des voix françaises et anglaises prédéfinies (voix française par défaut : `estelle`) et peut cloner une voix à partir de quelques secondes d’audio, ce qui permettrait de donner à Lina une voix unique.
+
+**1. Lancer Pocket TTS** (un processus par langue, sur n’importe quel serveur ou conteneur CPU) :
+```bash
+uvx pocket-tts serve --language french  --host 0.0.0.0 --port 8000
+uvx pocket-tts serve --language english --host 0.0.0.0 --port 8001     # facultatif
+```
+Ou bien `docker compose --profile voix up -d` (service `voix-fr` ; **non testé** ici). Le premier démarrage télécharge le modèle depuis Hugging Face. Ne pas exposer ce service sur Internet : seul notre serveur doit l’appeler.
+
+**2. Brancher la plateforme :** `TTS_PROVIDER=pocket-tts`, `POCKET_TTS_URL_FR=http://voix-fr:8000` (et `POCKET_TTS_URL_EN` si besoin), `POCKET_TTS_VOICE_FR=estelle`.
+
+**Fonctionnement :** le navigateur demande `/api/tts` ; notre serveur vérifie la session du candidat, relaie vers Pocket TTS avec **la voix fixée en configuration** (le navigateur ne peut ni choisir la voix ni fournir d’URL, ce qui empêche toute requête détournée), puis renvoie le WAV **en streaming** : Lina commence à parler pendant la génération. Les questions déjà prononcées sont servies depuis un cache (120 entrées) ; 500 caractères et 60 demandes par 5 minutes au maximum par candidat. Si Pocket TTS ne répond pas, l’interface reprend la voix du navigateur.
+
+**Tests :** `tests/mock_pocket_tts.py` imite `pocket-tts serve` (multipart `text` / `voice_url`, WAV en streaming) ; `tests/tts_api_test.py` 11/11 sur Node **et** Cloudflare Workers (premiers octets en ~20 ms, cache en ~10 ms, voix imposée, limite de débit) ; parcours navigateur : Lina parle via Pocket TTS, y compris les relances, avec repli propre si le service est coupé. **Non testé :** le vrai modèle (Hugging Face inaccessible depuis l’environnement de développement) ; la voix réelle reste à écouter et à valider par l’équipe.
+
 ## Règles de sécurité communes à tous les hôtes
 - Mots de passe PBKDF2-SHA256, session en cookie `HttpOnly` (`Secure` dès que `PUBLIC_URL` est en HTTPS), jeton stocké haché.
 - Écritures uniquement en JSON et depuis la même origine ; corps limités à 256 Ko sur l’hôte Node.

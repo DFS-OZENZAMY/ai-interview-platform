@@ -4,6 +4,7 @@ import { d1Store } from "../stores/d1.js";
 import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
 import { createSttProvider, openSttSession } from "../stt/index.js";
+import { createTtsProvider } from "../tts/index.js";
 
 let api;
 /** Workers peut livrer les trames binaires en Blob : conversion asynchrone, dans l'ordre d'arrivée. */
@@ -57,7 +58,7 @@ async function sttStream(req, env, url) {
   return new Response(null, { status: 101, webSocket: client });
 }
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     // Sur Cloudflare, le catalogue S2-03 se branche par HTTP (QUESTION_SOURCE=catalog-http).
@@ -66,11 +67,12 @@ export default {
       AI: createAI(env, { AI: env.AI }),
       QUESTIONS: await createQuestionSource(env),
       STT: createSttProvider(env),
+      TTS: createTtsProvider(env),
       COACH_INVITE_CODE: env.COACH_INVITE_CODE,
       COOKIE_SECURE: env.COOKIE_SECURE !== "false",
       RUNTIME: "cloudflare-workers",
     });
     if (url.pathname === "/api/stt/stream") return sttStream(req, env, url);
-    return api(req);
+    return api(req, ctx);
   },
 };

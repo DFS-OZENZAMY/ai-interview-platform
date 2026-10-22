@@ -12,6 +12,7 @@ import { createApp } from "../core/app.js";
 import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
 import { createSttProvider, openSttSession } from "../stt/index.js";
+import { createTtsProvider } from "../tts/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = process.env;
@@ -65,6 +66,7 @@ const api = createApp({
   AI: createAI(env),
   QUESTIONS: questions,
   STT: stt,
+  TTS: createTtsProvider(env),
   COACH_INVITE_CODE: env.COACH_INVITE_CODE,
   COOKIE_SECURE: env.COOKIE_SECURE ? env.COOKIE_SECURE !== "false" : !!(env.PUBLIC_URL || "").startsWith("https"),
   RUNTIME: env.RUNTIME_LABEL || "node",
@@ -82,7 +84,12 @@ const server = createServer(async (req, res) => {
     const headers = new Headers(); for (const [k, v] of Object.entries(req.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
     const r = await api(new Request(url, { method: req.method, headers, body: ["GET", "HEAD"].includes(req.method) ? undefined : Buffer.concat(chunks) }));
     const out = { ...SEC }; r.headers.forEach((v, k) => { out[k] = v; });
-    res.writeHead(r.status, out); res.end(Buffer.from(await r.arrayBuffer()));
+    res.writeHead(r.status, out);
+    if (!r.body) return res.end();
+    const reader = r.body.getReader();                 // streaming (voix de Lina : lecture pendant la génération)
+    req.on("close", () => reader.cancel().catch(() => {}));
+    for (;;) { const { done, value } = await reader.read(); if (done) break; if (!res.write(value)) await new Promise((ok) => res.once("drain", ok)); }
+    res.end();
   } catch (e) {
     console.error("http_error", e && e.message);
     if (!res.headersSent) res.writeHead(500, { "content-type": "application/json" }); res.end('{"error":"server_error"}');
@@ -136,6 +143,6 @@ if (stt) {
 }
 
 const port = Number(env.PORT || 8080), host = env.HOST || "0.0.0.0";
-server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"} · questions ${questions ? questions.name : "builtin"} · STT ${stt ? stt.name : "browser"}`));
+server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"} · questions ${questions ? questions.name : "builtin"} · STT ${stt ? stt.name : "browser"} · voix ${env.TTS_PROVIDER || "browser"}`));
 const stop = () => server.close(async () => { await store.close?.(); process.exit(0); });
 process.on("SIGTERM", stop); process.on("SIGINT", stop);

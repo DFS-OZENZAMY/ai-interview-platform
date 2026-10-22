@@ -442,6 +442,36 @@ async function finishCatalogInterview(req, user, env) {
   return json({ done: true });
 }
 
+/* Voix de Lina : synthèse Pocket TTS relayée, avec cache et limite de débit */
+const TTS_MAX_CHARS = 500, TTS_WINDOW_MS = 5 * 60 * 1000, TTS_MAX_PER_WINDOW = 60, TTS_CACHE_MAX = 120, TTS_CACHE_BYTES = 3 * 1024 * 1024;
+const ttsCache = new Map(), ttsHits = new Map();
+async function textToSpeech(url, user, env, ctx) {
+  if (!env.TTS) throw new HttpError(404, "tts_unavailable", "Synthèse vocale serveur non configurée.");
+  const lang = url.searchParams.get("lang") === "en" ? "en" : "fr";
+  if (!env.TTS.languages.includes(lang)) throw new HttpError(404, "tts_unavailable", "Langue non disponible pour la voix serveur.");
+  const text = String(url.searchParams.get("text") || "").replace(/\s+/g, " ").trim();
+  if (!text || text.length > TTS_MAX_CHARS) throw new HttpError(400, "bad_text", "Texte vide ou trop long.");
+  const t = Date.now(), recent = (ttsHits.get(user.id) || []).filter((x) => t - x < TTS_WINDOW_MS);
+  if (recent.length >= TTS_MAX_PER_WINDOW) throw new HttpError(429, "too_many_requests", "Trop de demandes de voix. Réessayez dans quelques minutes.");
+  recent.push(t); ttsHits.set(user.id, recent);
+  const headers = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
+  const key = lang + "|" + text, hit = ttsCache.get(key);
+  if (hit) { ttsCache.delete(key); ttsCache.set(key, hit); return new Response(hit, { headers: { ...headers, "x-tts-cache": "hit" } }); }
+  let up;
+  try { up = await env.TTS.synthesize(text, lang); }
+  catch (e) { console.error("tts_error", e && e.message); throw new HttpError(503, "tts_unavailable", "La voix de Lina est momentanément indisponible."); }
+  // Streaming vers le navigateur (la lecture démarre pendant la génération) + copie pour le cache.
+  const [toClient, toCache] = up.body.tee();
+  const filling = (async () => {
+    const reader = toCache.getReader(), parts = []; let size = 0;
+    for (;;) { const { done, value } = await reader.read(); if (done) break; size += value.byteLength; if (size > TTS_CACHE_BYTES) { reader.cancel(); return; } parts.push(value); }
+    const all = new Uint8Array(size); let o = 0; for (const p of parts) { all.set(p, o); o += p.byteLength; }
+    ttsCache.set(key, all); while (ttsCache.size > TTS_CACHE_MAX) ttsCache.delete(ttsCache.keys().next().value);
+  })().catch(() => {});
+  if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(filling);   // Workers : garder la mise en cache vivante
+  return new Response(toClient, { headers: { ...headers, "x-tts-cache": "miss" } });
+}
+
 /* IA */
 async function ask(env, system, user, maxTokens) {
   return String((await env.AI.complete({ system, user, maxTokens, temperature: 0.4 })) || "").trim();
@@ -465,9 +495,9 @@ async function aiFeedback(req, env) {
 }
 
 /* Routeur */
-async function route(req, env, url) {
+async function route(req, env, url, ctx) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser" });
+  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [] });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {
@@ -492,6 +522,7 @@ async function route(req, env, url) {
   if (p === "/api/onboarding/complete" && m === "POST") return completeOnboarding(req, need(user, "candidate"), env);
   if (p === "/api/profile" && m === "PUT") return updateProfile(req, need(user, "candidate"), env);
   if (p === "/api/ai/suggest-skills" && m === "POST") { need(user, "candidate"); if (!env.AI) throw new HttpError(503, "ai_unavailable"); return aiSuggestSkills(req, env); }
+  if (p === "/api/tts" && m === "GET") return textToSpeech(url, need(user, "candidate"), env, ctx);
   if (p === "/api/interview/start" && m === "POST") return startCatalogInterview(req, need(user, "candidate"), env);
   if (p === "/api/interview/next" && m === "POST") return nextCatalogQuestion(req, need(user, "candidate"), env);
   if (p === "/api/interview/finish" && m === "POST") return finishCatalogInterview(req, need(user, "candidate"), env);
@@ -521,10 +552,10 @@ async function route(req, env, url) {
  */
 export function createApp(env) {
   COOKIE_SECURE = env.COOKIE_SECURE !== false;
-  const handleApi = async function handleApi(req) {
+  const handleApi = async function handleApi(req, ctx) {
     const url = new URL(req.url);
     try {
-      return await route(req, env, url);
+      return await route(req, env, url, ctx);
     } catch (e) {
       if (e instanceof HttpError) return json({ error: e.code, message: e.message }, e.status);
       console.error("api_error", url.pathname, e && e.message);
