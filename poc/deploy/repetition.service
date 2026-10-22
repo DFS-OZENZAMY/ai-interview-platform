@@ -1,0 +1,18 @@
+# Exemple systemd pour un VPS (Ubuntu/Debian). Copier dans /etc/systemd/system/, puis :
+#   sudo systemctl daemon-reload && sudo systemctl enable --now repetition
+[Unit]
+Description=Répétition (POC AI Interview Platform)
+After=network.target
+
+[Service]
+User=repetition
+WorkingDirectory=/opt/repetition/poc
+EnvironmentFile=/opt/repetition/poc/.env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning server/hosts/node.js
+Restart=on-failure
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/repetition/poc/data
+
+[Install]
+WantedBy=multi-user.target

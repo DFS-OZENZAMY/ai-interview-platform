@@ -1,0 +1,27 @@
+# Démarrage local ou sur un serveur : application + PostgreSQL 16.
+# Usage : cp .env.example .env  (puis renseigner les valeurs)  &&  docker compose up -d
+services:
+  app:
+    build: .
+    ports: ["8080:8080"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://repetition:${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}@db:5432/repetition
+      PG_SSL: disable
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: repetition
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?définir POSTGRES_PASSWORD dans .env}
+      POSTGRES_DB: repetition
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U repetition"]
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  pgdata:
