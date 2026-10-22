@@ -467,7 +467,7 @@ async function aiFeedback(req, env) {
 /* Routeur */
 async function route(req, env, url) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin" });
+  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser" });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {
@@ -521,7 +521,7 @@ async function route(req, env, url) {
  */
 export function createApp(env) {
   COOKIE_SECURE = env.COOKIE_SECURE !== false;
-  return async function handleApi(req) {
+  const handleApi = async function handleApi(req) {
     const url = new URL(req.url);
     try {
       return await route(req, env, url);
@@ -531,4 +531,7 @@ export function createApp(env) {
       return json({ error: "server_error", message: "Erreur serveur. Réessayez." }, 500);
     }
   };
+  /** Pour les hôtes (WebSocket de transcription) : identifie l'utilisateur à partir du cookie de session. */
+  handleApi.authenticate = async (req) => { if (!env.DB) return null; await ensureSchema(env); return currentUser(req, env); };
+  return handleApi;
 }

@@ -20,7 +20,7 @@ Après inscription, le candidat remplit 6 écrans en 3 à 5 minutes : situation 
 - Aucune réponse de candidat n’est écrite dans les logs.
 
 ## Architecture « plug and play »
-Le serveur est découpé en un **cœur indépendant de l’hébergeur** (`server/core/`) et des **adaptateurs** : hôtes (`server/hosts/` : Cloudflare Workers, Node.js), bases (`server/stores/` : Cloudflare D1, SQLite, PostgreSQL dont Supabase), **source de questions** (`server/questions/` : banque intégrée ou référentiel S2-03 d’Achraf) et IA (`server/ai/` : Workers AI, API compatibles OpenAI, Anthropic, aucune). Détails, preuves et recettes : **[DEPLOIEMENT.md](DEPLOIEMENT.md)**.
+Le serveur est découpé en un **cœur indépendant de l’hébergeur** (`server/core/`) et des **adaptateurs** : hôtes (`server/hosts/` : Cloudflare Workers, Node.js), bases (`server/stores/` : Cloudflare D1, SQLite, PostgreSQL dont Supabase) et IA (`server/ai/` : Workers AI, API compatibles OpenAI, Anthropic, aucune). Détails, preuves et recettes : **[DEPLOIEMENT.md](DEPLOIEMENT.md)**.
 
 ```text
 poc/
@@ -47,5 +47,5 @@ cd poc && npx wrangler dev                                                   # C
 ```
 
 ## Tests réalisés
-Les mêmes suites passent à l’identique sur **Cloudflare Workers + D1, Node.js + SQLite et Node.js + PostgreSQL 16** (34 tests d’accès + 16 tests d’onboarding sur chacun), plus le parcours navigateur complet sur Node + PostgreSQL, et les adaptateurs OpenAI et Anthropic contre de faux fournisseurs. Rejouer : `BASE=http://127.0.0.1:8080 sh tests/run_api_tests.sh`. Référentiel S2-03 branché (SQL et HTTP) : `tests/catalog_api_test.py` 13/13 et parcours navigateur complet ; replis « catalogue vide » et « catalogue injoignable » vérifiés.
+Les mêmes suites passent à l’identique sur **Cloudflare Workers + D1, Node.js + SQLite et Node.js + PostgreSQL 16** (34 tests d’accès + 16 tests d’onboarding sur chacun), plus le parcours navigateur complet sur Node + PostgreSQL, et les adaptateurs OpenAI et Anthropic contre de faux fournisseurs. Rejouer : `BASE=http://127.0.0.1:8080 sh tests/run_api_tests.sh`.
 34 tests d’API (inscription, connexion, droits candidat / coach, partage et révocation, CSRF, limitation, suppression en cascade) et 2 parcours navigateur complets (mode Cloudflare local et mode démo), sans erreur.

@@ -11,6 +11,7 @@ import { fileURLToPath } from "node:url";
 import { createApp } from "../core/app.js";
 import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
+import { createSttProvider, openSttSession } from "../stt/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = process.env;
@@ -58,10 +59,12 @@ function originOf(req) {
 
 const store = await makeStore();
 const questions = await createQuestionSource(env, { pgPool: store.pool });
+const stt = createSttProvider(env);
 const api = createApp({
   DB: store,
   AI: createAI(env),
   QUESTIONS: questions,
+  STT: stt,
   COACH_INVITE_CODE: env.COACH_INVITE_CODE,
   COOKIE_SECURE: env.COOKIE_SECURE ? env.COOKIE_SECURE !== "false" : !!(env.PUBLIC_URL || "").startsWith("https"),
   RUNTIME: env.RUNTIME_LABEL || "node",
@@ -86,7 +89,53 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/* Transcription vocale en continu : WebSocket /api/stt/stream relayé vers Kyutai (clé côté serveur). */
+if (stt) {
+  const { WebSocketServer, WebSocket } = await import("ws").catch(() => { throw new Error("Installez le module : npm install ws"); });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+  const active = new Map();   // une seule dictée à la fois par utilisateur
+  server.on("upgrade", async (req, socket, head) => {
+    const deny = (code, msg) => { socket.write(`HTTP/1.1 ${code} ${msg}\r\nConnection: close\r\n\r\n`); socket.destroy(); };
+    try {
+      const url = new URL(req.url, originOf(req));
+      if (url.pathname !== "/api/stt/stream") return deny(404, "Not Found");
+      if (req.headers.origin && req.headers.origin !== url.origin) return deny(403, "Forbidden");
+      const headers = new Headers(); for (const [k, v] of Object.entries(req.headers)) if (typeof v === "string") headers.set(k, v);
+      const user = await api.authenticate(new Request(url, { headers }));
+      if (!user || user.role !== "candidate") return deny(401, "Unauthorized");
+      if (active.has(user.id)) { try { active.get(user.id).close(); } catch {} }
+      wss.handleUpgrade(req, socket, head, async (client) => {
+        let session = null;
+        const pending = [];
+        client.on("message", (data, isBinary) => { if (!session) return pending.push([data, isBinary]); isBinary ? session.onClientBinary(data) : session.onClientText(data.toString()); });
+        client.on("close", () => { active.delete(user.id); session && session.close(); });
+        try {
+          session = await openSttSession({
+            provider: stt,
+            connectUpstream: (u, h) => new Promise((resolve, reject) => {
+              const ws = new WebSocket(u, { headers: h, handshakeTimeout: 8000 });
+              ws.binaryType = "nodebuffer";
+              const queue = []; let onMsg = null;
+              ws.on("message", (d) => { const u = new Uint8Array(d); onMsg ? onMsg(u) : queue.push(u); });   // aucune perte avant l'attache de l'écouteur
+              ws.once("open", () => resolve({ send: (d) => ws.readyState === 1 && ws.send(d), close: () => ws.close(), onMessage: (cb) => { onMsg = cb; queue.splice(0).forEach(cb); }, onClose: (cb) => ws.on("close", cb) }));
+              ws.once("error", reject);
+            }),
+            sendToClient: (m) => client.readyState === 1 && client.send(JSON.stringify(m)),
+            closeClient: () => client.close(),
+            log: (...a) => console.log(...a),
+          });
+          active.set(user.id, client);
+          for (const [d, b] of pending) b ? session.onClientBinary(d) : session.onClientText(d.toString());
+        } catch (e) {
+          console.error("stt_upstream_error", e && e.message);
+          client.send(JSON.stringify({ type: "error", message: "Service de transcription indisponible." })); client.close();
+        }
+      });
+    } catch (e) { console.error("stt_upgrade_error", e && e.message); deny(500, "Error"); }
+  });
+}
+
 const port = Number(env.PORT || 8080), host = env.HOST || "0.0.0.0";
-server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"} · questions ${questions ? questions.name : "builtin"}`));
+server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"} · questions ${questions ? questions.name : "builtin"} · STT ${stt ? stt.name : "browser"}`));
 const stop = () => server.close(async () => { await store.close?.(); process.exit(0); });
 process.on("SIGTERM", stop); process.on("SIGINT", stop);

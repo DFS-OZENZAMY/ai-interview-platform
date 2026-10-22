@@ -24,7 +24,6 @@ Le cœur n’utilise que des API Web standard (`Request`, `Response`, `crypto.su
 | Hôte | reçoit une requête HTTP, sert `public/`, passe `/api/*` à `createApp(env)` | `server/hosts/cloudflare.js`, `server/hosts/node.js` |
 | Base (`env.DB`) | `prepare(sql).bind(…).first/all/run`, `batch([…])` transactionnel, `ensureSchema(ddl)`, `name`, `dialect` | `stores/d1.js`, `stores/sqlite-node.js`, `stores/postgres.js` |
 | IA (`env.AI`) | `{ name, complete({system, user, maxTokens}) → texte }` ou `null` | `ai/index.js` : Workers AI, API compatibles OpenAI, Anthropic, aucune |
-| Questions (`env.QUESTIONS`) | `{ name, open({candidateKey, locale}), next(ref, filtres) → question \| null, complete(ref) }` ou `null` | `questions/` : banque intégrée, **référentiel S2-03 d’Achraf** par HTTP (Edge Function Supabase) ou par SQL |
 
 Ajouter une cible (Deno, Bun, Vercel, une autre base…) revient à écrire un adaptateur de quelques dizaines de lignes, sans toucher au cœur ni à l’interface.
 
@@ -69,21 +68,32 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
 
-## Brancher le référentiel officiel S2-03 (questions d’Achraf)
+## Transcription vocale Kyutai STT
 
-| `QUESTION_SOURCE` | Usage | Variables |
-| --- | --- | --- |
-| `builtin` (défaut) | Banque intégrée du POC | aucune |
-| `catalog-http` | Supabase : Edge Function `question-bank`, appelée avec **son client S2-04** (`src/integrations/s2-04`). Fonctionne sur tous les hôtes, y compris Cloudflare | `QB_SUPABASE_URL`, `QB_PUBLISHABLE_KEY`, `QB_ENGINE_EMAIL`, `QB_ENGINE_PASSWORD` (compte de service avec `app_metadata.ai_interview_role = interview_engine`, attribué par un administrateur), `QB_FUNCTION_URL` (facultatif) |
-| `catalog-sql` | PostgreSQL auto-hébergé contenant les migrations `db/postgres` 0001–0006 (même base que le POC) | `DATABASE_URL`, `QB_ENGINE_ACTOR_ID` (UUID de l’identité moteur) |
+[Kyutai STT](https://kyutai.org/stt/) (laboratoire parisien, open source) remplace la dictée du navigateur, qui ne fonctionnait que sous Chrome et Edge et envoyait la voix aux serveurs de Google ou d’Apple. Modèle utilisé : `kyutai/stt-1b-en_fr` (français et anglais, environ 0,5 s de latence, ponctuation, détection sémantique de fin de parole).
 
-Fonctionnement : au démarrage d’un entretien, le serveur ouvre une session dans le catalogue, puis choisit **une question à la fois** (famille, catégorie et difficulté selon le profil, avec filtres de repli). Les fonctions d’Achraf figent chaque question posée (version de question, version de grille, texte exact) dans `question_bank.interview_question_snapshots`. Le navigateur ne reçoit que la question posée : ni la liste, ni les versions internes, ni les attendus (règle anti-énumération respectée). Les réponses et l’évaluation restent dans le POC.
+```text
+Navigateur ── micro, AudioWorklet 24 kHz, trames de 80 ms ──► NOTRE serveur /api/stt/stream ──► moshi-server (Kyutai)
+           ◄── mots en direct, « pause détectée », fin ─────── (candidat connecté, même origine,   ◄── msgpack Word/Step/Marker
+                                                                clé Kyutai côté serveur uniquement)
+```
 
-Si le catalogue n’a aucune question publiée pour le profil (c’est le cas aujourd’hui : 120 questions en brouillon) ou s’il est injoignable, le candidat est prévenu et l’entretien se fait avec la banque intégrée.
+**1. Faire tourner Kyutai (GPU NVIDIA requis)**, sur une machine GPU (Scaleway, OVH, AWS, RunPod…) :
+```bash
+cargo install --features cuda moshi-server
+git clone https://github.com/kyutai-labs/delayed-streams-modeling && cd delayed-streams-modeling
+# Dans configs/config-stt-en_fr-hf.toml, remplacer authorized_ids = ["public_token"] par un jeton long et secret
+moshi-server worker --config configs/config-stt-en_fr-hf.toml        # écoute en ws:// sur le port 8080
+```
+Placer un proxy TLS devant (Caddy, Nginx) pour obtenir une adresse `wss://`. Référence Kyutai : une L40S sert 64 dictées simultanées.
 
-Tests : `tests/catalog_api_test.py` (13 vérifications), validé avec `catalog-sql` sur PostgreSQL 16 et avec `catalog-http` contre un faux Supabase HTTPS (`tests/mock_supabase_question_bank.mjs`) qui exécute les vraies fonctions SQL d’Achraf. Pour disposer de questions publiées en local **uniquement**, `tests/fixtures/publish_local_test_subset.sql` publie 2 questions par catégorie avec un relecteur synthétique (refuse de s’exécuter sans drapeau explicite ou sur une base de type Supabase).
+**2. Brancher la plateforme** (n’importe quel hôte, y compris Cloudflare) : `STT_PROVIDER=kyutai`, `KYUTAI_STT_URL=wss://stt.exemple.ma`, secret `KYUTAI_STT_API_KEY`. Sur Node, le module `ws` est installé automatiquement (dépendance facultative).
 
-**Non testé :** le vrai projet Supabase (réseau bloqué depuis l’environnement de développement, aucun compte moteur ni question publiée à ce jour).
+**Sécurité et vie privée :** seul un candidat connecté peut ouvrir un flux (cookie de session vérifié, même origine), une dictée par personne, 15 minutes au maximum, trames contrôlées. Le jeton Kyutai ne quitte jamais le serveur, et l’audio n’est ni enregistré ni journalisé. Le texte du consentement micro s’adapte automatiquement. Si Kyutai est injoignable, l’interface bascule sur la dictée du navigateur quand elle existe, sinon sur le clavier.
+
+**Licences :** code Kyutai sous Apache 2.0 et MIT, poids du modèle sous **CC-BY 4.0** : usage commercial autorisé, avec attribution (« Transcription : Kyutai STT »).
+
+**Tests :** `tests/mock_kyutai_stt.py` reproduit le protocole de `moshi-server` (authentification, trames de 1 920 échantillons float32, Word/Step/Marker) ; l’encodage msgpack du POC est identique octet pour octet à celui du client officiel. `tests/stt_bridge_test.mjs` : 8/8 sur l’hôte Node **et** sur Cloudflare Workers (Wrangler local). Parcours navigateur avec micro simulé : capture, envoi, mots affichés en direct, vidage final récupérant le dernier mot, sur Node et sur Workers. **Non testé :** le vrai modèle (aucun GPU dans l’environnement de développement, Hugging Face inaccessible) ; la qualité de transcription n’est donc pas encore mesurée sur nos cas d’usage.
 
 ## Règles de sécurité communes à tous les hôtes
 - Mots de passe PBKDF2-SHA256, session en cookie `HttpOnly` (`Secure` dès que `PUBLIC_URL` est en HTTPS), jeton stocké haché.

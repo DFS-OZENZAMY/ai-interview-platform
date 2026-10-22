@@ -401,7 +401,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v5 : référentiel S2-03 branché) */
+/* Répétition — POC AI Interview Platform (v6 : transcription Kyutai STT) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1200,7 +1200,7 @@ function render(){
    Authentification
    ========================================================= */
 async function boot(){
-  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider;API.questionSource=j.questionSource||"builtin"}
+  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider;API.questionSource=j.questionSource||"builtin";API.stt=j.stt||"browser"}
   catch(e){API.mode="demo";API.coachSignup=true}
   try{const {user}=await call("GET","/api/auth/me");S.user=user}catch(e){S.user=null}
   await afterLogin(false);
@@ -1290,7 +1290,7 @@ function setup(){
     <h2>Micro et caméra</h2>
     <p class="lede" style="margin-top:12px">Les deux sont facultatifs. Vous pourrez toujours répondre au clavier.</p>
     <div class="panel" style="margin-top:28px">
-      <label class="check"><input type="checkbox" id="c2" ${c.mic?"checked":""}><span><b>Utiliser mon micro pour dicter mes réponses.</b><small>La voix est convertie en texte par votre navigateur ; aucun audio n’est enregistré.</small></span></label>
+      <label class="check"><input type="checkbox" id="c2" ${c.mic?"checked":""}><span><b>Utiliser mon micro pour dicter mes réponses.</b><small>${API.stt==="kyutai"?"Votre voix est transcrite en direct par notre serveur de transcription (Kyutai STT) ; l’audio n’est ni enregistré ni conservé.":"La voix est convertie en texte par votre navigateur ; aucun audio n’est enregistré."}</small></span></label>
       <label class="check"><input type="checkbox" id="c3" ${c.cam?"checked":""}><span><b>Afficher ma caméra pendant l’entretien.</b><small>Aperçu local pour vous entraîner au regard caméra ; aucune image n’est enregistrée ni envoyée.</small></span></label>
     </div>
     <div class="nav-row"><button class="btn quiet" data-go="dashboard">Retour</button><button class="btn primary" id="next">Continuer</button></div>
@@ -1334,7 +1334,7 @@ function prep(){
           <ul style="padding-left:20px;margin:12px 0 0">${((P.goals||[]).length?P.goals:["structure"]).map(g=>`<li style="margin:8px 0">${tips[g]}</li>`).join("")}</ul></div>
         <div class="panel"><h3>Réglages</h3>
           <label class="check"><input type="checkbox" id="voice" ${S.voice?"checked":""}><span><b>Lina lit les questions à voix haute</b><small>${synth?"Synthèse vocale de votre navigateur.":"Non disponible sur ce navigateur."}</small></span></label>
-          ${M.mic?`<label class="check"><input type="checkbox" checked disabled><span><b>Dictée par micro</b><small>${SR?"Bouton « Dicter ma réponse » pendant l’entretien.":"Non prise en charge par ce navigateur (essayez Chrome ou Edge)."}</small></span></label>`:""}
+          ${M.mic?`<label class="check"><input type="checkbox" checked disabled><span><b>Dictée par micro</b><small>${API.stt==="kyutai"?"Transcription en direct par Kyutai STT (français et anglais), sur tous les navigateurs récents.":SR?"Bouton « Dicter ma réponse » pendant l’entretien.":"Non prise en charge par ce navigateur (essayez Chrome ou Edge)."}</small></span></label>`:""}
           ${M.cam?`<label class="check"><input type="checkbox" id="cam" checked><span><b>Aperçu caméra</b><small>Local uniquement, rien n’est enregistré.</small></span></label>`:""}
           <p style="margin-top:12px"><button class="btn quiet sm" data-go="setup">Modifier micro et caméra</button></p>
         </div>
@@ -1399,7 +1399,7 @@ function interview(){
       <textarea id="answer" placeholder="${L.lang==="en"?"Answer as you would out loud…":"Répondez comme vous le feriez à l’oral…"}"></textarea>
       <div class="answer-tools">
         <span class="live" id="liveInd"><i></i> <span id="wc">0 mot</span></span>
-        <div class="row">${M.mic&&SR?`<button class="btn quiet" id="dictBtn">Dicter ma réponse</button>`:""}<button class="btn quiet" id="replay" ${S.voice&&synth?"":"hidden"}>Réécouter</button></div>
+        <div class="row">${M.mic&&(sttServer()||SR)?`<button class="btn quiet" id="dictBtn" title="${sttServer()?"Transcription : Kyutai STT (modèle CC-BY 4.0)":"Dictée du navigateur"}">Dicter ma réponse</button>`:""}<button class="btn quiet" id="replay" ${S.voice&&synth?"":"hidden"}>Réécouter</button></div>
       </div>
       <div class="nav-row">
         <div class="row"><button class="btn quiet" id="pause">Pause</button><button class="btn quiet" id="end">Terminer</button></div>
@@ -1422,7 +1422,7 @@ function interview(){
 let timerH; function startTimer(){clearInterval(timerH);const t0=Date.now();timerH=setInterval(()=>{const el=$("#timer");if(!el)return clearInterval(timerH);const s=Math.floor((Date.now()-t0)/1000);el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`},1000)}
 function updateCount(){const n=words($("#answer").value);$("#wc").textContent=`${n} mot${n>1?"s":""}`;$("#send").disabled=n<3}
 async function submitAnswer(){
-  const L=S.live, ans=$("#answer").value.trim(); if(rec)rec.stop();
+  const L=S.live, ans=$("#answer").value.trim(); if(rec)rec.stop(); if(KYU.state!=="idle")kyuAbort();
   busy($("#send"),true);
   if(L.pending){commitTurn(L.pending.answer+" "+ans,L.pending.followup,ans);return}
   let f=null; const goalsPush=(S.prefs.profile.goals||[]).some(g=>["structure","examples"].includes(g));
@@ -1728,8 +1728,60 @@ function speak(text,lang){
   u.onstart=()=>setOrb("speaking"); u.onend=()=>setOrb("listening"); u.onerror=()=>setOrb("listening"); synth.speak(u);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null;
-function stopVoice(){try{synth&&synth.cancel()}catch(e){} if(rec){try{rec.stop()}catch(e){} rec=null} stopCam()}
+function stopVoice(){try{synth&&synth.cancel()}catch(e){} if(rec){try{rec.stop()}catch(e){} rec=null} kyuAbort(); stopCam()}
+
+/* ---------- Transcription Kyutai STT (via notre serveur) ---------- */
+const sttServer=()=>API.mode==="remote"&&API.stt==="kyutai"&&!!window.WebSocket&&!!(window.AudioContext||window.webkitAudioContext);
+const KYU={ws:null,ctx:null,stream:null,node:null,words:[],base:"",state:"idle"};
+const PCM_WORKLET=`class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.b=new Float32Array(1920);this.n=0;this.t=0}
+process(inputs){const ch=inputs[0]&&inputs[0][0];if(!ch)return true;
+ if(this.r===1){for(let i=0;i<ch.length;i++)this.push(ch[i])}
+ else{while(this.t<ch.length-1){const i=Math.floor(this.t),f=this.t-i;this.push(ch[i]*(1-f)+ch[i+1]*f);this.t+=this.r}this.t-=ch.length}
+ return true}
+push(v){this.b[this.n++]=v;if(this.n===1920){this.port.postMessage(this.b.slice(0));this.n=0}}}
+registerProcessor("pcm24k",P)`;
+function kyuUi(label,on){const btn=$("#dictBtn"),live=$("#liveInd");if(btn){btn.textContent=label;btn.disabled=label.endsWith("…")}if(live){live.classList.toggle("on",!!on)}}
+function kyuAbort(){const k=KYU;try{k.node&&k.node.disconnect()}catch(e){}try{k.ctx&&k.ctx.close()}catch(e){}try{k.stream&&k.stream.getTracks().forEach(t=>t.stop())}catch(e){}try{k.ws&&k.ws.readyState<2&&k.ws.close()}catch(e){}Object.assign(KYU,{ws:null,ctx:null,stream:null,node:null,state:"idle"})}
+async function kyuStart(){
+  const ta=$("#answer"); KYU.state="connecting"; kyuUi("Connexion…",false);
+  try{KYU.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){kyuAbort();kyuUi("Dicter ma réponse",false);toast("Micro refusé par le navigateur. Vous pouvez répondre au clavier.");return}
+  KYU.base=ta.value?ta.value.trim()+" ":""; KYU.words=[];
+  const ws=new WebSocket(`${location.protocol==="https:"?"wss":"ws"}://${location.host}/api/stt/stream`); ws.binaryType="arraybuffer"; KYU.ws=ws;
+  let ready=false;
+  ws.onmessage=async(e)=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
+    if(m.type==="ready"&&!ready){ready=true;try{await kyuAudio()}catch(err){toast("Capture audio impossible sur ce navigateur.");kyuAbort();kyuUi("Dicter ma réponse",false)}}
+    else if(m.type==="word"){KYU.words.push(m.text);const t=$("#answer");if(t){t.value=KYU.base+KYU.words.join(" ").replace(/\s+([,.;:!?])/g,"$1");updateCount()}}
+    else if(m.type==="vad"){const l=$("#liveInd span:last-child");if(l)l.textContent="Pause détectée"}
+    else if(m.type==="error"){toast(m.message||"Transcription interrompue.")}
+    else if(m.type==="done"){kyuAbort();kyuUi("Dicter ma réponse",false)}};
+  ws.onclose=()=>{const wasReady=ready;kyuAbort();kyuUi("Dicter ma réponse",false);
+    if(!wasReady&&SR){toast("Transcription Kyutai indisponible : dictée du navigateur.");browserDictation()}
+    else if(!wasReady)toast("Service de transcription indisponible. Vous pouvez répondre au clavier.")};
+}
+async function kyuAudio(){
+  const AC=window.AudioContext||window.webkitAudioContext; let ctx;
+  try{ctx=new AC({sampleRate:24000})}catch(e){ctx=new AC()}
+  KYU.ctx=ctx; const url=URL.createObjectURL(new Blob([PCM_WORKLET],{type:"text/javascript"}));
+  await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
+  const src=ctx.createMediaStreamSource(KYU.stream);
+  const node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/24000}}); KYU.node=node;
+  node.port.onmessage=(e)=>{if(KYU.ws&&KYU.ws.readyState===1&&KYU.state==="live")KYU.ws.send(e.data.buffer)};
+  const mute=ctx.createGain(); mute.gain.value=0; src.connect(node); node.connect(mute); mute.connect(ctx.destination);
+  KYU.state="live"; kyuUi("Arrêter la dictée",true);
+}
+function kyuStop(){
+  if(KYU.state!=="live")return kyuAbort();
+  KYU.state="stopping"; kyuUi("Finalisation…",false);
+  try{KYU.stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  try{KYU.ws.send(JSON.stringify({type:"stop"}))}catch(e){}
+  setTimeout(()=>{if(KYU.state==="stopping"){kyuAbort();kyuUi("Dicter ma réponse",false)}},6000);
+}
 function toggleDictation(){
+  if(sttServer()){return KYU.state==="idle"?kyuStart():kyuStop()}
+  browserDictation();
+}
+function browserDictation(){
   const btn=$("#dictBtn"), live=$("#liveInd"), ta=$("#answer"); if(rec){rec.stop();return}
   rec=new SR(); rec.lang=S.live.lang==="en"?"en-GB":"fr-FR"; rec.continuous=true; rec.interimResults=true;
   const base=ta.value?ta.value.trim()+" ":"";
