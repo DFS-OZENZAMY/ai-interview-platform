@@ -10,6 +10,7 @@ import { join, normalize, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../core/app.js";
 import { createAI } from "../ai/index.js";
+import { createQuestionSource } from "../questions/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = process.env;
@@ -24,7 +25,9 @@ async function makeStore() {
     const ssl = env.PG_SSL === "disable" ? false : env.PG_SSL === "require" || /supabase|neon|azure|rds|sslmode=require/.test(env.DATABASE_URL) ? { rejectUnauthorized: env.PG_SSL_STRICT === "true" } : false;
     const pool = new pg.Pool({ connectionString: env.DATABASE_URL, ssl, max: Number(env.PG_POOL_MAX || 5) });
     const { postgresStore } = await import("../stores/postgres.js");
-    return postgresStore(pool, { schema: env.PG_SCHEMA || "app" });
+    const store = postgresStore(pool, { schema: env.PG_SCHEMA || "app" });
+    store.pool = pool;
+    return store;
   }
   const { sqliteStore } = await import("../stores/sqlite-node.js");
   return sqliteStore(env.SQLITE_PATH || join(here, "../../data/app.db"));
@@ -54,9 +57,11 @@ function originOf(req) {
 }
 
 const store = await makeStore();
+const questions = await createQuestionSource(env, { pgPool: store.pool });
 const api = createApp({
   DB: store,
   AI: createAI(env),
+  QUESTIONS: questions,
   COACH_INVITE_CODE: env.COACH_INVITE_CODE,
   COOKIE_SECURE: env.COOKIE_SECURE ? env.COOKIE_SECURE !== "false" : !!(env.PUBLIC_URL || "").startsWith("https"),
   RUNTIME: env.RUNTIME_LABEL || "node",
@@ -82,6 +87,6 @@ const server = createServer(async (req, res) => {
 });
 
 const port = Number(env.PORT || 8080), host = env.HOST || "0.0.0.0";
-server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"}`));
+server.listen(port, host, () => console.log(`Répétition prêt sur http://${host}:${port} · base ${store.name} · IA ${env.AI_PROVIDER || "auto"} · questions ${questions ? questions.name : "builtin"}`));
 const stop = () => server.close(async () => { await store.close?.(); process.exit(0); });
 process.on("SIGTERM", stop); process.on("SIGINT", stop);

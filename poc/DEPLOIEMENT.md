@@ -24,6 +24,7 @@ Le cœur n’utilise que des API Web standard (`Request`, `Response`, `crypto.su
 | Hôte | reçoit une requête HTTP, sert `public/`, passe `/api/*` à `createApp(env)` | `server/hosts/cloudflare.js`, `server/hosts/node.js` |
 | Base (`env.DB`) | `prepare(sql).bind(…).first/all/run`, `batch([…])` transactionnel, `ensureSchema(ddl)`, `name`, `dialect` | `stores/d1.js`, `stores/sqlite-node.js`, `stores/postgres.js` |
 | IA (`env.AI`) | `{ name, complete({system, user, maxTokens}) → texte }` ou `null` | `ai/index.js` : Workers AI, API compatibles OpenAI, Anthropic, aucune |
+| Questions (`env.QUESTIONS`) | `{ name, open({candidateKey, locale}), next(ref, filtres) → question \| null, complete(ref) }` ou `null` | `questions/` : banque intégrée, **référentiel S2-03 d’Achraf** par HTTP (Edge Function Supabase) ou par SQL |
 
 Ajouter une cible (Deno, Bun, Vercel, une autre base…) revient à écrire un adaptateur de quelques dizaines de lignes, sans toucher au cœur ni à l’interface.
 
@@ -67,6 +68,22 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 4. La chaîne de connexion est un secret serveur, au même titre que `service_role` : jamais dans l’interface, jamais dans Git.
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
+
+## Brancher le référentiel officiel S2-03 (questions d’Achraf)
+
+| `QUESTION_SOURCE` | Usage | Variables |
+| --- | --- | --- |
+| `builtin` (défaut) | Banque intégrée du POC | aucune |
+| `catalog-http` | Supabase : Edge Function `question-bank`, appelée avec **son client S2-04** (`src/integrations/s2-04`). Fonctionne sur tous les hôtes, y compris Cloudflare | `QB_SUPABASE_URL`, `QB_PUBLISHABLE_KEY`, `QB_ENGINE_EMAIL`, `QB_ENGINE_PASSWORD` (compte de service avec `app_metadata.ai_interview_role = interview_engine`, attribué par un administrateur), `QB_FUNCTION_URL` (facultatif) |
+| `catalog-sql` | PostgreSQL auto-hébergé contenant les migrations `db/postgres` 0001–0006 (même base que le POC) | `DATABASE_URL`, `QB_ENGINE_ACTOR_ID` (UUID de l’identité moteur) |
+
+Fonctionnement : au démarrage d’un entretien, le serveur ouvre une session dans le catalogue, puis choisit **une question à la fois** (famille, catégorie et difficulté selon le profil, avec filtres de repli). Les fonctions d’Achraf figent chaque question posée (version de question, version de grille, texte exact) dans `question_bank.interview_question_snapshots`. Le navigateur ne reçoit que la question posée : ni la liste, ni les versions internes, ni les attendus (règle anti-énumération respectée). Les réponses et l’évaluation restent dans le POC.
+
+Si le catalogue n’a aucune question publiée pour le profil (c’est le cas aujourd’hui : 120 questions en brouillon) ou s’il est injoignable, le candidat est prévenu et l’entretien se fait avec la banque intégrée.
+
+Tests : `tests/catalog_api_test.py` (13 vérifications), validé avec `catalog-sql` sur PostgreSQL 16 et avec `catalog-http` contre un faux Supabase HTTPS (`tests/mock_supabase_question_bank.mjs`) qui exécute les vraies fonctions SQL d’Achraf. Pour disposer de questions publiées en local **uniquement**, `tests/fixtures/publish_local_test_subset.sql` publie 2 questions par catégorie avec un relecteur synthétique (refuse de s’exécuter sans drapeau explicite ou sur une base de type Supabase).
+
+**Non testé :** le vrai projet Supabase (réseau bloqué depuis l’environnement de développement, aucun compte moteur ni question publiée à ce jour).
 
 ## Règles de sécurité communes à tous les hôtes
 - Mots de passe PBKDF2-SHA256, session en cookie `HttpOnly` (`Secure` dès que `PUBLIC_URL` est en HTTPS), jeton stocké haché.

@@ -385,6 +385,7 @@ dialog{max-width:600px}
   .cefr{grid-template-columns:repeat(3,1fr)}
   .recap-sec dl div{grid-template-columns:1fr;gap:0}
 }
+.src-badge{display:inline-block;margin-left:8px;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--sage-soft);color:var(--sage);vertical-align:1px}
 </style>
 </head>
 <body>
@@ -400,7 +401,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v4 : cœur indépendant de l’hébergeur) */
+/* Répétition — POC AI Interview Platform (v5 : référentiel S2-03 branché) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1181,7 +1182,7 @@ function renderBar(){
     :`<button class="btn quiet sm" data-go="auth" data-auth="login">Se connecter</button><button class="btn primary sm" data-go="auth" data-auth="register">Créer un compte</button>`;
   if(u)$("#logout").onclick=logout;
   $("#engineTag").textContent=API.mode==="demo"?"Mode démo":API.ai?"IA active":"Moteur local";
-  $("#engineTag").title=API.mode==="demo"?"Comptes et données stockés dans ce navigateur uniquement":`Hébergement : ${API.runtime||"?"} · base : ${API.store||"?"} · IA : ${API.aiProvider||"moteur local"}`;
+  $("#engineTag").title=API.mode==="demo"?"Comptes et données stockés dans ce navigateur uniquement":`Hébergement : ${API.runtime||"?"} · base : ${API.store||"?"} · IA : ${API.aiProvider||"moteur local"} · questions : ${API.questionSource==="builtin"?"banque intégrée":"référentiel officiel S2-03 ("+API.questionSource+")"}`;
 }
 function render(){
   const guard={home:null,auth:null,rubric:null,onboard:"candidate",welcome:"candidate",profile:"candidate",simConfig:"candidate",setup:"candidate",prep:"candidate",interview:"candidate",processing:"candidate",report:"candidate",coaching:"candidate",dashboard:"candidate",coachBoard:"coach",coachRequest:"coach",coachProfile:"coach"};
@@ -1199,7 +1200,7 @@ function render(){
    Authentification
    ========================================================= */
 async function boot(){
-  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider}
+  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider;API.questionSource=j.questionSource||"builtin"}
   catch(e){API.mode="demo";API.coachSignup=true}
   try{const {user}=await call("GET","/api/auth/me");S.user=user}catch(e){S.user=null}
   await afterLogin(false);
@@ -1326,7 +1327,8 @@ function prep(){
     <p class="lede" style="margin-top:12px">${esc(ROLES[P.role].fr)} · ${esc(LEVELS[P.level].fr)} · ${esc(TYPES[P.type].fr)} · ${P.lang==="en"?"English":"Français"}</p>
     <div class="prep">
       <div class="panel"><h3>Ce que Lina va aborder</h3>
-        <ol class="plan-list">${plan.map(q=>`<li><span>${esc(q.comp)}<small>${q.kind==="tech"?"Question métier":"Question comportementale"}</small></span></li>`).join("")}</ol></div>
+        ${useCatalog()?`<p class="hint" style="margin-top:10px">${P.length==="short"?5:7} questions tirées du <b>référentiel officiel S2-03</b>, choisies une à une pendant l’entretien selon votre profil (présentation, ${P.type==="rh"?"mises en situation":P.type==="tech"?"questions métier":"mises en situation et questions métier"}, projection). Seules les questions validées et publiées peuvent être posées ; elles ne sont pas affichées à l’avance.</p>`
+          :`<ol class="plan-list">${plan.map(q=>`<li><span>${esc(q.comp)}<small>${q.kind==="tech"?"Question métier":"Question comportementale"}</small></span></li>`).join("")}</ol>`}</div>
       <div class="stack">
         <div class="panel"><h3>Conseils pour vous</h3>
           <ul style="padding-left:20px;margin:12px 0 0">${((P.goals||[]).length?P.goals:["structure"]).map(g=>`<li style="margin:8px 0">${tips[g]}</li>`).join("")}</ul></div>
@@ -1342,17 +1344,37 @@ function prep(){
   </section>`;
   $("#voice").onchange=e=>S.voice=e.target.checked;
   $("#edit").onclick=()=>go("simConfig");
-  $("#go").onclick=()=>{S.cam=!!($("#cam")&&$("#cam").checked);startSession(plan.map(q=>q.id))};
+  $("#go").onclick=()=>{S.cam=!!($("#cam")&&$("#cam").checked);startSession(plan.map(q=>q.id),false,null,$("#go"))};
 }
 
 /* ---------- Session : machine à états, sauvegarde serveur ---------- */
-function startSession(planIds,drill=false){
+const useCatalog=()=>API.mode==="remote"&&API.questionSource&&API.questionSource!=="builtin";
+async function startSession(planIds,drill=false,custom=null,btn=null){
   const P=S.prefs.profile;
-  S.live={id:"s_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:"in_progress",startedAt:new Date().toISOString(),endedAt:null,role:P.role,level:P.level,type:P.type,lang:P.lang,
-    rubricVersion:RUBRIC_VERSION,consentVersion:"consent-v0.1",plan:planIds,idx:0,turns:[],followupAsked:false,pending:null,drill,evaluation:null};
-  S.sessions.push(snapshot()); persist(); go("interview");
+  const L={id:"s_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:"in_progress",startedAt:new Date().toISOString(),endedAt:null,role:P.role,level:P.level,type:P.type,lang:P.lang,
+    rubricVersion:RUBRIC_VERSION,consentVersion:"consent-v0.1",plan:planIds||[],custom,idx:0,turns:[],followupAsked:false,pending:null,drill,evaluation:null,source:"builtin"};
+  if(!drill&&!custom&&useCatalog()){
+    busy(btn,true,"Préparation de l’entretien…");
+    try{
+      const r=await call("POST","/api/interview/start",{sessionId:L.id,role:P.role,level:P.level,type:P.type,lang:P.lang,length:P.length});
+      Object.assign(L,{source:r.source,catalog:true,current:r.question,total:r.question.total});
+    }catch(e){
+      busy(btn,false);
+      if(!["catalog_empty","catalog_unavailable","builtin_source"].includes(e.code)){toast(e.message);return}
+      toast((e.code==="catalog_empty"?"Le référentiel officiel n’a pas encore de questions publiées pour ce profil":"Référentiel officiel indisponible")+" : simulation avec la banque intégrée.");
+      if(!L.plan.length)L.plan=buildPlan(P).map(q=>q.id);
+    }
+  }
+  S.live=L; S.sessions.push(snapshot()); persist(); go("interview");
 }
-function snapshot(){const L=S.live;return {id:L.id,status:L.status,startedAt:L.startedAt,endedAt:L.endedAt,role:L.role,level:L.level,type:L.type,lang:L.lang,rubricVersion:L.rubricVersion,consentVersion:L.consentVersion,plan:L.plan,turns:L.turns,drill:!!L.drill,evaluation:L.evaluation||null}}
+/** Question courante, quelle que soit la source : référentiel S2-03, exercice ciblé ou banque intégrée. */
+function currentQ(L){
+  if(L.catalog&&L.current)return {id:L.current.code,comp:L.current.comp,kind:L.current.kind,fr:L.current.prompt,en:L.current.prompt};
+  if(L.custom)return L.custom[L.idx];
+  return Q.find(x=>x.id===L.plan[L.idx]);
+}
+const totalQ=(L)=>L.catalog?L.total:L.custom?L.custom.length:L.plan.length;
+function snapshot(){const L=S.live;return {id:L.id,status:L.status,startedAt:L.startedAt,endedAt:L.endedAt,role:L.role,level:L.level,type:L.type,lang:L.lang,rubricVersion:L.rubricVersion,consentVersion:L.consentVersion,plan:L.plan,turns:L.turns,drill:!!L.drill,source:L.source||"builtin",evaluation:L.evaluation||null}}
 let saveChain=Promise.resolve();
 function persist(){
   const snap=snapshot(); const i=S.sessions.findIndex(s=>s.id===snap.id); if(i>=0)S.sessions[i]=snap; else S.sessions.push(snap);
@@ -1363,13 +1385,14 @@ function interrupt(){if(!S.live)return;S.live.status="interrupted";persist();sto
 
 function interview(){
   const L=S.live; if(!L){go("home");return}
-  const q=Q.find(x=>x.id===L.plan[L.idx]); const text=L.pending?L.pending.followup:q[L.lang];
+  if(L.awaitingNext)return renderNextRetry();
+  const q=currentQ(L); const text=L.pending?L.pending.followup:q[L.lang];
   const M=S.prefs.media||{};
   app.innerHTML=`<section class="room">
     <div>${orbSVG("idle")}${S.cam?`<div class="cam" id="camBox"><video id="camVideo" muted playsinline></video><span>Aperçu local · non enregistré</span></div>`:""}</div>
     <div>
-      <div class="meta"><span>Question ${L.idx+1} sur ${L.plan.length} · ${esc(q.comp)}</span><span id="timer">0:00</span></div>
-      <div class="progress" aria-hidden="true"><i style="width:${Math.round(L.idx/L.plan.length*100)}%"></i></div>
+      <div class="meta"><span>Question ${L.idx+1} sur ${totalQ(L)} · ${esc(q.comp)}${L.catalog?` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`:""}</span><span id="timer">0:00</span></div>
+      <div class="progress" aria-hidden="true"><i style="width:${Math.round(L.idx/totalQ(L)*100)}%"></i></div>
       <p class="qtext ${L.pending?"followup":""}" id="qtext">${esc(text)}</p>
       ${L.pending?`<p class="hint" style="margin-top:8px">Relance de Lina sur la question : « ${esc(q[L.lang])} »</p>`:""}
       <label for="answer" class="hint" style="display:block;margin:26px 0 8px">Votre réponse</label>
@@ -1390,7 +1413,7 @@ function interview(){
   if($("#dictBtn"))$("#dictBtn").onclick=toggleDictation;
   $("#replay").onclick=()=>speak(text,L.lang);
   $("#send").onclick=submitAnswer;
-  $("#skip").onclick=()=>{if(L.pending){commitTurn(L.pending.answer,null,null)}else{L.turns.push({seq:L.turns.length+1,qid:q.id,comp:q.comp,prompt:q[L.lang],answer:"",skipped:true,at:new Date().toISOString()});nextQuestion()}};
+  $("#skip").onclick=()=>{if(L.pending){commitTurn(L.pending.answer,null,null)}else{L.turns.push({seq:L.turns.length+1,qid:q.id,comp:q.comp,kind:q.kind,prompt:q[L.lang],source:L.catalog?L.source:"builtin",answer:"",skipped:true,at:new Date().toISOString()});nextQuestion()}};
   $("#pause").onclick=pauseSession;
   $("#end").onclick=()=>{if(confirm("Terminer maintenant ? Les réponses données seront évaluées."))finish()};
   if(S.cam)startCam();
@@ -1404,25 +1427,44 @@ async function submitAnswer(){
   if(L.pending){commitTurn(L.pending.answer+" "+ans,L.pending.followup,ans);return}
   let f=null; const goalsPush=(S.prefs.profile.goals||[]).some(g=>["structure","examples"].includes(g));
   if(!L.followupAsked||goalsPush){
-    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:Q.find(x=>x.id===L.plan[L.idx])[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr})).followup||null}catch(e){f=localFollowup(ans,L.lang)}}
+    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:currentQ(L)[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr})).followup||null}catch(e){f=localFollowup(ans,L.lang)}}
     else f=localFollowup(ans,L.lang);
   }
   if(f&&L.turns.filter(t=>t.followup).length<3){L.pending={answer:ans,followup:f};L.followupAsked=true;interview();return}
   commitTurn(ans,null,null);
 }
 function commitTurn(answer,followup,followupAnswer){
-  const L=S.live,q=Q.find(x=>x.id===L.plan[L.idx]);
-  L.turns.push({seq:L.turns.length+1,qid:q.id,comp:q.comp,prompt:q[L.lang],answer:answer.trim(),followup,followupAnswer,at:new Date().toISOString()});
+  const L=S.live,q=currentQ(L);
+  L.turns.push({seq:L.turns.length+1,qid:q.id,comp:q.comp,kind:q.kind,prompt:q[L.lang],source:L.catalog?L.source:"builtin",answer:answer.trim(),followup,followupAnswer,at:new Date().toISOString()});
   L.pending=null; nextQuestion();
 }
-function nextQuestion(){const L=S.live;L.idx++;persist();if(L.idx>=L.plan.length)finish();else interview()}
+async function nextQuestion(){
+  const L=S.live;
+  if(!L.catalog){L.idx++;persist();if(L.idx>=totalQ(L))finish();else interview();return}
+  // Référentiel S2-03 : le serveur choisit et fige la question suivante ; le navigateur ne connaît jamais la suite.
+  L.awaitingNext=true; persist();
+  try{
+    const r=await call("POST","/api/interview/next",{sessionId:L.id});
+    L.awaitingNext=false;
+    if(r.done){finish();return}
+    L.current=r.question; L.idx++; persist(); interview();
+  }catch(e){L.netError=e.message;renderNextRetry()}
+}
+function renderNextRetry(){
+  const L=S.live;
+  app.innerHTML=`<section class="narrow empty">${orbSVG("idle",false)}<h2>Lina n’arrive pas à charger la question suivante</h2>
+    <p class="lede" style="margin:14px auto 24px">${esc(L.netError||"Connexion interrompue.")} Vos ${L.turns.length} réponse${L.turns.length>1?"s sont enregistrées":" est enregistrée"}.</p>
+    <div class="row" style="justify-content:center"><button class="btn primary" id="retryNext">Réessayer</button><button class="btn quiet" id="endNow">Terminer avec ces réponses</button></div></section>`;
+  $("#retryNext").onclick=()=>{busy($("#retryNext"),true,"Nouvel essai…");nextQuestion()};
+  $("#endNow").onclick=()=>{L.awaitingNext=false;finish()};
+}
 function pauseSession(){
   const L=S.live; L.status="interrupted"; persist(); stopVoice();
   const ov=document.createElement("div"); ov.className="paused"; ov.innerHTML=`<div class="panel narrow" style="text-align:center"><h2>Entretien en pause</h2><p class="lede" style="margin:12px auto 24px">Vos réponses sont enregistrées. Reprenez quand vous êtes prêt·e.</p><button class="btn primary" id="resume">Reprendre</button></div>`;
   document.body.appendChild(ov); $("#resume").focus();
   $("#resume").onclick=()=>{ov.remove();L.status="in_progress";persist();interview()};
 }
-function finish(){const L=S.live;stopVoice();clearInterval(timerH);L.status="processing";L.endedAt=new Date().toISOString();persist();go("processing")}
+function finish(){const L=S.live;stopVoice();clearInterval(timerH);if(L.catalog)call("POST","/api/interview/finish",{sessionId:L.id}).catch(()=>{});L.status="processing";L.endedAt=new Date().toISOString();persist();go("processing")}
 async function processing(){
   const L=S.live; if(!L)return go("home");
   app.innerHTML=`<section class="processing">${orbSVG("speaking",false)}<h2>Lina prépare votre retour</h2><ol id="stepsP"><li>Transcription finalisée</li><li>Analyse selon la grille ${RUBRIC_VERSION}</li><li>Recherche des passages justificatifs</li><li>Enregistrement de votre simulation</li></ol></section>`;
@@ -1446,7 +1488,7 @@ function reportHTML(s,{coachView=false}={}){
       <div class="stack">
         <h2>${coachView?"Résultat de la simulation":E.overall>=75?"Un entretien convaincant.":E.overall>=55?"De bonnes bases, des points à muscler.":"Un premier essai utile pour progresser."}</h2>
         <p class="lede">${esc(ROLES[s.role]?.fr||"")} · ${esc(LEVELS[s.level]?.fr||"")} · ${fmtDate(s.endedAt||s.startedAt)} · ${E.answered} réponses analysées${E.skipped?` · ${E.skipped} passée${E.skipped>1?"s":""}`:""}</p>
-        <p class="notice">Retour d’entraînement calculé avec la grille ${E.rubricVersion}${E.engine==="local+workers-ai"?" ; commentaire rédigé par l’IA":""}. Non validé par un expert ; ce n’est pas une décision de recrutement.</p>
+        ${s.source&&s.source!=="builtin"?`<p class="notice">Questions issues du référentiel officiel S2-03 (versions figées dans le catalogue). La notation reste celle du POC, en attendant les grilles du Sprint 3.</p>`:""}<p class="notice">Retour d’entraînement calculé avec la grille ${E.rubricVersion}${E.engine==="local+workers-ai"?" ; commentaire rédigé par l’IA":""}. Non validé par un expert ; ce n’est pas une décision de recrutement.</p>
       </div>
     </div>
     ${E.aiSummary?`<div class="panel" style="margin-bottom:24px"><h3>Le mot de Lina</h3><p style="margin-top:8px">${esc(E.aiSummary)}</p></div>`:""}
@@ -1495,7 +1537,7 @@ function coaching(){
   </section>`;
   app.querySelectorAll(".action .tick").forEach(b=>b.onclick=()=>{const k=b.closest(".action").dataset.k;S.prefs.actions[s.id]={...done,[k]:!done[k]};savePrefs();coaching()});
   app.querySelectorAll("[data-guide]").forEach(b=>b.onclick=()=>{const d=$("#g-"+b.dataset.guide);d.open=true;d.scrollIntoView({behavior:"smooth",block:"center"})});
-  if($("#replayQ"))$("#replayQ").onclick=()=>{S.prefs.profile={...S.prefs.profile,role:s.role,level:s.level,type:s.type,lang:s.lang};startSession([worst.qid],true)};
+  if($("#replayQ"))$("#replayQ").onclick=()=>{S.prefs.profile={...S.prefs.profile,role:s.role,level:s.level,type:s.type,lang:s.lang};startSession(null,true,[{id:worst.qid,comp:worst.comp,kind:worst.kind||"rh",fr:worst.prompt,en:worst.prompt}])};
   if($("#coach"))$("#coach").onclick=()=>openCoachRequest(s);
 }
 async function openCoachRequest(s){

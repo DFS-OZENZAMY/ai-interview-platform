@@ -17,6 +17,7 @@
  */
 
 import { validateProfile, suggestedSkills, PROFILE_VERSION } from "./profile-contract.js";
+import { planSlots, relaxations, candidateUuid, CATEGORY_LABELS } from "../questions/index.js";
 
 const SESSION_DAYS = 7;
 const PBKDF2_ITER = 100000;
@@ -39,6 +40,7 @@ export const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_login_attempts ON login_attempts(email, at)`,
   `CREATE TABLE IF NOT EXISTS onboarding_drafts (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, step INTEGER NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS candidate_profiles (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, version TEXT NOT NULL, data TEXT NOT NULL, seniority TEXT NOT NULL, target_job TEXT NOT NULL, completed_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS catalog_links (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, source TEXT NOT NULL, catalog_ref TEXT NOT NULL, slots TEXT NOT NULL, asked INTEGER NOT NULL DEFAULT 0, turns TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL CHECK (status IN ('active','done')), created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_user_id TEXT, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, occurred_at TEXT NOT NULL)`,
 ];
 let schemaReady = null;
@@ -167,6 +169,7 @@ async function deleteAccount(user, env) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM coach_notes WHERE request_id IN (SELECT id FROM coaching_requests WHERE candidate_id = ? OR coach_id = ?)").bind(user.id, user.id),
     env.DB.prepare("DELETE FROM coaching_requests WHERE candidate_id = ? OR coach_id = ?").bind(user.id, user.id),
+    env.DB.prepare("DELETE FROM catalog_links WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM interview_sessions WHERE candidate_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM consents WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM onboarding_drafts WHERE user_id = ?").bind(user.id),
@@ -362,6 +365,83 @@ async function aiSuggestSkills(req, env) {
   return json({ skills: arr });
 }
 
+
+/* Entretien piloté par le catalogue S2-03 (source de questions branchée) */
+const ROLES_OK = ["dev", "data", "rh", "sales", "pm"], LEVELS_OK = ["junior", "mid", "senior"], TYPES_OK = ["rh", "tech", "mix"];
+/** Toute panne du catalogue (réseau, authentification moteur…) devient une erreur 503 explicite, jamais un 500. */
+async function catalogCall(fn) {
+  try { return await fn(); }
+  catch (e) {
+    if (e instanceof HttpError) throw e;
+    console.error("catalog_error", e && (e.code || e.message));
+    throw new HttpError(503, "catalog_unavailable", "Le catalogue officiel de questions est momentanément indisponible.");
+  }
+}
+async function pickTurn(env, link, slots) {
+  for (let i = link.asked; i < slots.length; i++) {
+    for (const f of relaxations(slots[i])) {
+      const t = await env.QUESTIONS.next(link.catalog_ref, f);
+      if (t) return { t, slotIndex: i };
+    }
+  }
+  return null;
+}
+function publicTurn(t, total) {
+  // Seule la question posée part vers le navigateur : ni liste, ni versions internes, ni attendus.
+  return { code: t.code, prompt: t.prompt, turn: t.turn, total, kind: t.family === "technical" ? "tech" : "rh", comp: CATEGORY_LABELS[t.category] || (t.family === "technical" ? "Question technique" : "Question RH") };
+}
+async function advance(env, user, link) {
+  const slots = JSON.parse(link.slots);
+  const picked = link.asked < slots.length ? await catalogCall(() => pickTurn(env, link, slots)) : null;
+  const t = now();
+  if (!picked) {
+    await catalogCall(() => env.QUESTIONS.complete(link.catalog_ref));
+    await env.DB.prepare("UPDATE catalog_links SET status = 'done', updated_at = ? WHERE session_id = ?").bind(t, link.session_id).run();
+    return { done: true, asked: link.asked };
+  }
+  const turns = JSON.parse(link.turns);
+  turns.push({ turn: picked.t.turn, code: picked.t.code, questionVersionId: picked.t.questionVersionId, rubricVersionId: picked.t.rubricVersionId });
+  const upd = await env.DB.prepare("UPDATE catalog_links SET asked = ?, turns = ?, updated_at = ? WHERE session_id = ? AND asked = ?")
+    .bind(link.asked + 1, JSON.stringify(turns), t, link.session_id, link.asked).run();
+  if (!(upd.meta && upd.meta.changes)) throw new HttpError(409, "concurrent_request", "Requête déjà en cours pour cette simulation.");
+  return { done: false, question: publicTurn(picked.t, slots.length) };
+}
+async function startCatalogInterview(req, user, env) {
+  if (!env.QUESTIONS) throw new HttpError(409, "builtin_source", "Aucun catalogue de questions n’est branché : l’interface utilise sa banque intégrée.");
+  const b = await body(req);
+  if (!/^s_[a-z0-9]{4,32}$/i.test(String(b.sessionId || ""))) throw new HttpError(400, "bad_id", "Identifiant de simulation invalide.");
+  if (!ROLES_OK.includes(b.role) || !LEVELS_OK.includes(b.level) || !TYPES_OK.includes(b.type)) throw new HttpError(400, "bad_plan", "Paramètres de simulation invalides.");
+  const locale = b.lang === "en" ? "en" : "fr";
+  if (await env.DB.prepare("SELECT 1 FROM catalog_links WHERE session_id = ?").bind(b.sessionId).first()) throw new HttpError(409, "exists", "Cette simulation a déjà démarré.");
+  const slots = planSlots({ role: b.role, level: b.level, type: b.type, length: b.length === "short" ? "short" : "std" });
+  const ref = await catalogCall(async () => env.QUESTIONS.open({ candidateKey: await candidateUuid(user.id), locale }));
+  const t = now();
+  await env.DB.prepare("INSERT INTO catalog_links (session_id, user_id, source, catalog_ref, slots, asked, turns, status, created_at, updated_at) VALUES (?,?,?,?,?,0,'[]','active',?,?)")
+    .bind(b.sessionId, user.id, env.QUESTIONS.name, String(ref), JSON.stringify(slots), t, t).run();
+  const link = await env.DB.prepare("SELECT * FROM catalog_links WHERE session_id = ?").bind(b.sessionId).first();
+  const r = await advance(env, user, link);
+  if (r.done) throw new HttpError(409, "catalog_empty", "Le catalogue officiel ne contient encore aucune question publiée pour ce profil.");
+  await audit(env, user.id, "catalog_interview_started", "interview_session", b.sessionId);
+  return json({ source: env.QUESTIONS.name, ...r });
+}
+async function nextCatalogQuestion(req, user, env) {
+  const b = await body(req);
+  const link = await env.DB.prepare("SELECT * FROM catalog_links WHERE session_id = ? AND user_id = ?").bind(String(b.sessionId || ""), user.id).first();
+  if (!link) throw new HttpError(404, "not_found", "Simulation introuvable.");
+  if (link.status !== "active") return json({ done: true });
+  return json(await advance(env, user, link));
+}
+async function finishCatalogInterview(req, user, env) {
+  const b = await body(req);
+  const link = await env.DB.prepare("SELECT * FROM catalog_links WHERE session_id = ? AND user_id = ?").bind(String(b.sessionId || ""), user.id).first();
+  if (!link) throw new HttpError(404, "not_found", "Simulation introuvable.");
+  if (link.status === "active") {
+    await catalogCall(() => env.QUESTIONS.complete(link.catalog_ref));
+    await env.DB.prepare("UPDATE catalog_links SET status = 'done', updated_at = ? WHERE session_id = ?").bind(now(), link.session_id).run();
+  }
+  return json({ done: true });
+}
+
 /* IA */
 async function ask(env, system, user, maxTokens) {
   return String((await env.AI.complete({ system, user, maxTokens, temperature: 0.4 })) || "").trim();
@@ -387,7 +467,7 @@ async function aiFeedback(req, env) {
 /* Routeur */
 async function route(req, env, url) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null });
+  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin" });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {
@@ -412,6 +492,9 @@ async function route(req, env, url) {
   if (p === "/api/onboarding/complete" && m === "POST") return completeOnboarding(req, need(user, "candidate"), env);
   if (p === "/api/profile" && m === "PUT") return updateProfile(req, need(user, "candidate"), env);
   if (p === "/api/ai/suggest-skills" && m === "POST") { need(user, "candidate"); if (!env.AI) throw new HttpError(503, "ai_unavailable"); return aiSuggestSkills(req, env); }
+  if (p === "/api/interview/start" && m === "POST") return startCatalogInterview(req, need(user, "candidate"), env);
+  if (p === "/api/interview/next" && m === "POST") return nextCatalogQuestion(req, need(user, "candidate"), env);
+  if (p === "/api/interview/finish" && m === "POST") return finishCatalogInterview(req, need(user, "candidate"), env);
   if (p === "/api/sessions" && m === "GET") return listSessions(need(user, "candidate"), env);
   if ((mm = p.match(/^\/api\/sessions\/([\w-]+)$/)) && m === "PUT") return saveSession(req, need(user, "candidate"), env, mm[1]);
 
