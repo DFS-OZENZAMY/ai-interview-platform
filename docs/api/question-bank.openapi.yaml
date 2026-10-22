@@ -14,8 +14,9 @@ security:
 paths:
   /internal/question-bank/questions:
     get:
-      summary: List published questions for S2-04
+      summary: List published questions for trusted S2-04 engine only
       operationId: listPublishedQuestions
+      description: Engine/admin role required via server-managed app_metadata; authenticated candidates receive HTTP 403.
       parameters:
         - {name: locale, in: query, schema: {type: string, enum: [fr, en], default: fr}}
         - {name: family, in: query, schema: {type: string, enum: [rh, transversal, technical]}}
@@ -37,7 +38,7 @@ paths:
                   next_cursor: {type: [string, 'null']}
         '400': {description: Invalid filters or locale}
         '401': {description: Missing or invalid server token}
-        '403': {description: Not authorized for catalog reads}
+        '403': {description: Engine/admin authorization required}
   /internal/question-bank/questions/{code}:
     get:
       summary: Retrieve one published candidate-safe question
