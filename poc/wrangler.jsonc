@@ -1,6 +1,6 @@
 {
   // Hôte Cloudflare Workers du POC Répétition. Répertoire racine du build Cloudflare : poc
-  "name": "ai-interview-poc",
+  "name": "ai-interview-platform",
   "main": "server/hosts/cloudflare.js",
   "compatibility_date": "2026-09-01",
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },

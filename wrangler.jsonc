@@ -1,7 +1,7 @@
 {
   // Configuration Cloudflare du POC Répétition, utilisable depuis la RACINE du dépôt.
   // (Équivalent de poc/wrangler.jsonc si le répertoire racine du build Cloudflare est « poc ».)
-  "name": "ai-interview-poc",
+  "name": "ai-interview-platform",
   "main": "poc/server/hosts/cloudflare.js",
   "compatibility_date": "2026-09-01",
   "assets": { "directory": "./poc/public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
