@@ -4,8 +4,14 @@
   "main": "server/hosts/cloudflare.js",
   "compatibility_date": "2026-09-01",
   "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
-  // Base D1 créée automatiquement au premier déploiement (provisionnement automatique de Wrangler).
+  // Production : base D1 créée automatiquement au premier déploiement.
   "d1_databases": [{ "binding": "DB", "database_name": "ai-interview-poc" }],
   "ai": { "binding": "AI" },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Préversions (branches hors production, commande `wrangler preview`) : elles n'héritent de rien.
+  // Volontairement SANS base de données : l'interface y fonctionne en mode démo (données dans le
+  // navigateur), ce qui évite tout accès aux données de production depuis une branche de test.
+  "previews": {
+    "ai": { "binding": "AI" }
+  }
 }
