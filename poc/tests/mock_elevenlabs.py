@@ -7,7 +7,12 @@ import asyncio, base64, json, os, secrets, struct, subprocess, sys, math
 from aiohttp import web, WSMsgType
 KEY = os.environ.get("EL_KEY", "sk_test_elevenlabs"); STATS = os.environ.get("STATS_FILE", "/tmp/elevenlabs_stats.json")
 stats = {"tts": [], "tokens_issued": 0, "ws_sessions": 0, "ws_rejected": 0, "chunks": 0, "bad_chunks": 0, "commits": 0, "key_rejected": 0}
-TOKENS = set(); MP3 = {}
+TOKENS = set(); MP3 = {}; ADDED = {}
+MODELS = set((os.environ.get("MOCK_MODELS") or "eleven_v4_turbo,eleven_multilingual_v2,eleven_flash_v2_5").split(","))
+LIB = [  # voix françaises natives fictives de la bibliothèque
+  {"voice_id": f"frVoice{i:03d}abcd", "public_owner_id": f"owner{i:03d}xyz123", "name": n, "gender": g, "age": a, "accent": "parisian", "language": "fr", "use_case": "conversational", "description": d}
+  for i, (n, g, a, d) in enumerate([("Camille", "female", "middle_aged", "Voix posée et professionnelle, idéale pour un entretien."), ("Julien", "male", "middle_aged", "Manager calme et direct."),
+                                    ("Inès", "female", "young", "Voix dynamique et souriante."), ("Mehdi", "male", "young", "Voix chaleureuse, accent neutre."), ("Claire", "female", "old", "DRH expérimentée, ton ferme.")])]
 SENTENCE = "Lors de mon dernier stage chez un assureur j'ai automatisé le reporting ce qui a fait gagner six heures par semaine à l'équipe".split()
 def save(): open(STATS, "w").write(json.dumps(stats, ensure_ascii=False))
 def mp3(seconds):
@@ -18,6 +23,8 @@ def mp3(seconds):
 async def tts(req):
     if req.headers.get("xi-api-key") != KEY: stats["key_rejected"] += 1; save(); return web.json_response({"detail": {"status": "invalid_api_key"}}, status=401)
     b = await req.json(); text = b.get("text", "")
+    if b.get("model_id") not in MODELS: stats.setdefault("model_rejected", []).append(b.get("model_id")); save(); return web.json_response({"detail": {"status": "model_not_supported"}}, status=400)
+    if b.get("model_id") == "eleven_multilingual_v2" and "language_code" in b: return web.json_response({"detail": "language_code not supported"}, status=400)
     if not text or req.query.get("output_format") != "mp3_44100_128": return web.json_response({"detail": "bad request"}, status=422)
     stats["tts"].append({"voice": req.match_info["voice"], "model": b.get("model_id"), "lang": b.get("language_code"), "text": text[:60]}); save()
     resp = web.StreamResponse(headers={"content-type": "audio/mpeg"}); await resp.prepare(req)
@@ -59,7 +66,23 @@ async def realtime(req):
         if m.get("commit"): await commit()
         if stats["chunks"] % 20 == 0: save()
     save(); return ws
+async def shared(req):
+    if req.headers.get("xi-api-key") != KEY: return web.json_response({"detail": "invalid_api_key"}, status=401)
+    q = req.query; v = [x for x in LIB if x["language"] == q.get("language", "fr") and (not q.get("gender") or x["gender"] == q.get("gender")) and (not q.get("search") or q["search"].lower() in (x["name"] + x["description"]).lower())]
+    stats["library_queries"] = stats.get("library_queries", 0) + 1; save()
+    return web.json_response({"has_more": False, "voices": [{**x, "preview_url": f"http://{req.host}/preview/{x['voice_id']}.mp3"} for x in v]})
+async def add_voice(req):
+    if req.headers.get("xi-api-key") != KEY: return web.json_response({"detail": "invalid_api_key"}, status=401)
+    o, vid = req.match_info["owner"], req.match_info["voice"]
+    if not any(x["voice_id"] == vid and x["public_owner_id"] == o for x in LIB): return web.json_response({"detail": "voice_not_found"}, status=404)
+    new_id = "acct" + vid[:12]; ADDED[new_id] = (await req.json()).get("new_name"); stats["added"] = ADDED; save()
+    return web.json_response({"voice_id": new_id})
+async def preview(req):
+    return web.Response(body=mp3(1.5), content_type="audio/mpeg")
 app = web.Application()
+app.router.add_get("/v1/shared-voices", shared)
+app.router.add_post("/v1/voices/add/{owner}/{voice}", add_voice)
+app.router.add_get("/preview/{name}", preview)
 app.router.add_post("/v1/text-to-speech/{voice}/stream", tts)
 app.router.add_post("/v1/single-use-token/realtime_scribe", token)
 app.router.add_get("/v1/speech-to-text/realtime", realtime)

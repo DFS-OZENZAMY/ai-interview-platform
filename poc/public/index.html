@@ -396,6 +396,15 @@ dialog{max-width:600px}
 .agent-card .agent-listen{grid-column:2;justify-self:start;margin-top:10px}
 .choice.radio.agent-card.on{border-color:var(--orb);background:color-mix(in srgb,var(--orb) 10%,var(--surface))}
 .orb .ring{stroke:var(--orb,var(--sage))}.orb .core{fill:var(--orb,var(--sage))}
+
+/* Voix des recruteurs (administration) */
+.agent-admin .agent-dot{width:30px;height:30px;border-radius:50%;background:var(--orb);flex:none}
+.agent-admin .req-top{justify-content:flex-start;gap:12px}
+.voice-filters{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:28px}
+.voice-filters .field{margin:0;min-width:220px}
+.voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:18px}
+.voice-card .req-top b{font-family:var(--display);font-size:1.15rem}
+.sm-select{min-height:38px;padding:4px 10px;min-width:0;flex:0 1 auto}
 </style>
 </head>
 <body>
@@ -411,7 +420,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v9 : ElevenLabs + choix du recruteur) */
+/* Répétition — POC AI Interview Platform (v10 : voix réalistes ElevenLabs) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1204,6 +1213,7 @@ document.addEventListener("click",e=>{
 
 function renderBar(){
   const u=S.user, links=!u?[["home","Accueil"],["rubric","Grille d’évaluation"]]:u.role==="coach"?[["coachBoard","Demandes"],["coachProfile","Mon profil coach"],["rubric","Grille"]]:OB.status!=="done"?[["onboard","Mon inscription"]]:[["home","Accueil"],["dashboard","Tableau de bord"],["profile","Mon profil"],["rubric","Grille"]];
+  if(u&&u.isAdmin&&API.mode==="remote")links.push(["voices","Voix"]);
   $("#nav").innerHTML=links.map(([k,l])=>`<button data-go="${k}" aria-current="${S.screen===k?"page":"false"}">${l}</button>`).join("");
   $("#account").innerHTML=u?`<span class="who-chip" title="${esc(u.email)}"><i>${esc(u.name.slice(0,1).toUpperCase())}</i><span>${esc(u.name)}<small>${u.role==="coach"?"Coach":"Candidat·e"}</small></span></span><button class="btn quiet sm" id="logout">Se déconnecter</button>`
     :`<button class="btn quiet sm" data-go="auth" data-auth="login">Se connecter</button><button class="btn primary sm" data-go="auth" data-auth="register">Créer un compte</button>`;
@@ -1212,12 +1222,12 @@ function renderBar(){
   $("#engineTag").title=API.mode==="demo"?"Comptes et données stockés dans ce navigateur uniquement":`Hébergement : ${API.runtime||"?"} · base : ${API.store||"?"} · IA : ${API.aiProvider||"moteur local"} · questions : ${API.questionSource==="builtin"?"banque intégrée":"référentiel officiel S2-03 ("+API.questionSource+")"}`;
 }
 function render(){
-  const guard={home:null,auth:null,rubric:null,onboard:"candidate",welcome:"candidate",profile:"candidate",simConfig:"candidate",setup:"candidate",prep:"candidate",interview:"candidate",processing:"candidate",report:"candidate",coaching:"candidate",dashboard:"candidate",coachBoard:"coach",coachRequest:"coach",coachProfile:"coach"};
+  const guard={home:null,auth:null,rubric:null,voices:null,onboard:"candidate",welcome:"candidate",profile:"candidate",simConfig:"candidate",setup:"candidate",prep:"candidate",interview:"candidate",processing:"candidate",report:"candidate",coaching:"candidate",dashboard:"candidate",coachBoard:"coach",coachRequest:"coach",coachProfile:"coach"};
   const need=guard[S.screen];
   if(need&&!S.user){S.authMode="login";S.screen="auth"}
   else if(need&&S.user.role!==need){S.screen=HOME[S.user.role]}
   else if(S.screen==="home"&&S.user&&S.user.role==="coach"){S.screen="coachBoard"}
-  else if(S.user&&S.user.role==="candidate"&&OB.status!=="done"&&!["onboard","auth","rubric"].includes(S.screen)){S.screen="onboard"}
+  else if(S.user&&S.user.role==="candidate"&&OB.status!=="done"&&!["onboard","auth","rubric","voices"].includes(S.screen)){S.screen="onboard"}
   else if(S.user&&S.user.role==="candidate"&&OB.status==="done"&&S.screen==="onboard"&&OB.mode!=="edit"){S.screen="dashboard"}
   renderBar();
   const fn=SCREENS[S.screen]; fn();
@@ -1749,6 +1759,47 @@ function rubric(){
 }
 
 /* =========================================================
+   Administration : voix réalistes des recruteurs (bibliothèque ElevenLabs)
+   ========================================================= */
+const MODEL_LABEL={eleven_v4_turbo:"Eleven v4 Turbo (le plus réaliste en temps réel)",eleven_multilingual_v2:"Eleven Multilingual v2 (très naturel)",eleven_flash_v2_5:"Eleven Flash v2.5 (le plus rapide)"};
+const VQ={gender:"",search:"",page:0};
+let previewAudio=null;
+function playPreview(url,btn){try{previewAudio&&previewAudio.pause()}catch(e){}stopVoice();previewAudio=new Audio(url);previewAudio.play().catch(()=>toast("Lecture impossible."));if(btn){btn.textContent="Lecture…";previewAudio.onended=previewAudio.onerror=()=>{btn.textContent="Écouter l’extrait"}}}
+async function voices(){
+  if(!S.user||!S.user.isAdmin){app.innerHTML=`<section class="narrow empty"><h2>Accès réservé</h2><p class="lede" style="margin-top:12px">Cette page est réservée à l’administrateur de la plateforme.</p></section>`;return}
+  app.innerHTML=`<section><p class="hint">Chargement de la bibliothèque ElevenLabs…</p></section>`;
+  let d; try{d=await call("GET","/api/admin/voices?"+new URLSearchParams(VQ))}catch(e){app.innerHTML=`<section class="narrow"><h2>Voix des recruteurs</h2><p class="form-error" style="margin-top:16px">${esc(e.message)}</p></section>`;return}
+  app.innerHTML=`<section>
+    <div class="board-head"><div><h2>Voix des recruteurs</h2><p class="lede" style="margin-top:10px">Écoutez les voix françaises de la bibliothèque ElevenLabs et attribuez la plus réaliste à chaque recruteur.</p></div>
+      <span class="status s-accepted" title="Modèle de synthèse utilisé">Modèle : ${esc(MODEL_LABEL[d.model]||d.model||"?")}</span></div>
+    <div class="agent-grid" style="margin-top:24px">${d.agents.map(a=>`<div class="panel agent-admin" style="--orb:${esc(a.color)}"><div class="req-top"><span class="agent-dot"></span><div><b>${esc(a.name)}</b><small class="hint" style="display:block">${esc(a.title)}</small></div></div>
+      <p style="margin-top:10px">Voix : <b>${esc(a.voiceName)}</b></p>
+      <div class="row" style="margin-top:10px"><button class="btn quiet sm" data-hear="${esc(a.id)}">Écouter</button>${a.custom?`<button class="btn quiet sm" data-reset="${esc(a.id)}">Voix par défaut</button>`:""}</div></div>`).join("")}</div>
+    <form class="voice-filters" id="vf">
+      <label class="field"><span>Genre</span><select name="gender"><option value="">Toutes les voix</option><option value="female" ${VQ.gender==="female"?"selected":""}>Féminines</option><option value="male" ${VQ.gender==="male"?"selected":""}>Masculines</option></select></label>
+      <label class="field"><span>Recherche</span><input name="search" value="${esc(VQ.search)}" placeholder="ex. posée, professionnelle, chaleureuse"></label>
+      <button class="btn primary" type="submit">Rechercher</button>
+    </form>
+    ${d.voices.length?`<div class="voice-grid">${d.voices.map((v,i)=>`<article class="panel voice-card">
+      <div class="req-top"><b>${esc(v.name)}</b><span class="hint">${esc([v.gender==="female"?"féminine":v.gender==="male"?"masculine":"",({young:"jeune",middle_aged:"adulte",old:"mûre"})[v.age]||"",({parisian:"accent parisien",standard:"accent standard",canadian:"accent québécois",quebecois:"accent québécois",belgian:"accent belge",swiss:"accent suisse",african:"accent africain",moroccan:"accent marocain",southern:"accent du Sud"})[v.accent]||v.accent||""].filter(Boolean).join(" · "))}</span></div>
+      ${v.description?`<p class="hint" style="margin-top:8px">${esc(v.description)}</p>`:""}
+      <div class="row" style="margin-top:12px">${v.previewUrl?`<button class="btn quiet sm" data-prev="${i}">Écouter l’extrait</button>`:""}
+        <label class="sr-only" for="as-${i}">Attribuer à</label><select id="as-${i}" class="input sm-select">${d.agents.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("")}</select>
+        <button class="btn primary sm" data-assign="${i}">Attribuer</button></div></article>`).join("")}</div>
+      <div class="row" style="justify-content:space-between;margin-top:18px">${VQ.page>0?`<button class="btn quiet" id="vprev">Page précédente</button>`:"<span></span>"}${d.hasMore?`<button class="btn quiet" id="vnext">Page suivante</button>`:""}</div>`
+    :`<div class="panel empty" style="margin-top:20px"><p class="hint">Aucune voix française ne correspond à cette recherche.</p></div>`}
+    <p class="notice" style="margin-top:24px">Attribuer une voix l’ajoute à votre compte ElevenLabs (dans la limite de votre forfait). Les candidats l’entendent dès la question suivante.</p>
+  </section>`;
+  $("#vf").onsubmit=(e)=>{e.preventDefault();const f=new FormData(e.target);VQ.gender=f.get("gender")||"";VQ.search=(f.get("search")||"").trim();VQ.page=0;voices()};
+  if($("#vprev"))$("#vprev").onclick=()=>{VQ.page--;voices()}; if($("#vnext"))$("#vnext").onclick=()=>{VQ.page++;voices()};
+  app.querySelectorAll("[data-prev]").forEach(b=>b.onclick=()=>playPreview(d.voices[+b.dataset.prev].previewUrl,b));
+  app.querySelectorAll("[data-hear]").forEach(b=>b.onclick=()=>{const a=agentOf(b.dataset.hear);speak((a.greeting&&a.greeting.fr)||"Bonjour, je mènerai votre entretien aujourd’hui.","fr",a.id)});
+  app.querySelectorAll("[data-assign]").forEach(b=>b.onclick=async()=>{const v=d.voices[+b.dataset.assign],agent=$("#as-"+b.dataset.assign).value;busy(b,true,"Attribution…");
+    try{await call("POST",`/api/admin/agents/${agent}/voice`,{ownerId:v.ownerId,voiceId:v.voiceId,name:v.name});toast(`${v.name} est maintenant la voix de ${agentOf(agent).name}`);voices()}catch(e){toast(e.message);busy(b,false)}});
+  app.querySelectorAll("[data-reset]").forEach(b=>b.onclick=async()=>{busy(b,true);try{await call("POST",`/api/admin/agents/${b.dataset.reset}/voice`,{reset:true});toast("Voix par défaut rétablie");voices()}catch(e){toast(e.message);busy(b,false)}});
+}
+
+/* =========================================================
    Avatar, voix, caméra
    ========================================================= */
 function orbSVG(state="idle",name=true,agent=null){
@@ -1893,7 +1944,7 @@ let camStream=null;
 async function startCam(){try{camStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});const v=$("#camVideo");if(v){v.srcObject=camStream;v.play()}}catch(e){S.cam=false;toast("Caméra indisponible ou refusée. La simulation continue sans image.");const c=$("#camBox");if(c)c.remove()}}
 function stopCam(){if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}}
 
-const SCREENS={home,auth,setup,onboard,welcome,profile,simConfig,prep,interview,processing,report,coaching,dashboard,rubric,coachBoard,coachRequest,coachProfile};
+const SCREENS={home,auth,voices,setup,onboard,welcome,profile,simConfig,prep,interview,processing,report,coaching,dashboard,rubric,coachBoard,coachRequest,coachProfile};
 app.innerHTML=`<section class="processing">${orbSVG("idle",false)}</section>`;
 boot();
 

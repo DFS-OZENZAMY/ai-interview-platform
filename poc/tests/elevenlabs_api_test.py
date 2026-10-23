@@ -21,7 +21,7 @@ st = json.load(open(os.environ["STATS_FILE"]))
 voices = [t["voice"] for t in st["tts"]]
 ok(voices[:2] == ["JBFqnCBsd6RMkjVDRZzb", "EXAVITQu4vr4xnSDxMaL"], "chaque agent parle avec sa propre voix ElevenLabs")
 ok(voices[2] == "EXAVITQu4vr4xnSDxMaL" and st["tts"][2]["lang"] == "en", "agent inconnu : repli sur l'agent par défaut ; langue anglaise transmise")
-ok(all(t["model"] == "eleven_flash_v2_5" for t in st["tts"]), "modèle Flash v2.5 (faible latence)")
+ok(all(t["model"] == "eleven_v4_turbo" for t in st["tts"]), "modèle Eleven v4 Turbo (réaliste, temps réel)")
 tk = s.post(B + "/api/stt/token", json={"lang": "fr"}).json()
 ok("token=" in tk["url"] and "sk_" not in json.dumps(tk) and "language_code=fr" in tk["url"] and tk["sampleRate"] == 16000, "jeton de dictée à usage unique (sans clé API), français, 16 kHz")
 ok(requests.post(B + "/api/stt/token", headers={"Content-Type": "application/json", "Origin": B}, json={}).status_code == 401, "jeton refusé sans connexion")

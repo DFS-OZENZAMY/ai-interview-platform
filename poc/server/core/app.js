@@ -42,6 +42,7 @@ export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS onboarding_drafts (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, step INTEGER NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS candidate_profiles (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, version TEXT NOT NULL, data TEXT NOT NULL, seniority TEXT NOT NULL, target_job TEXT NOT NULL, completed_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS catalog_links (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, source TEXT NOT NULL, catalog_ref TEXT NOT NULL, slots TEXT NOT NULL, asked INTEGER NOT NULL DEFAULT 0, turns TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL CHECK (status IN ('active','done')), created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS agent_voices (agent_id TEXT PRIMARY KEY, voice_id TEXT NOT NULL, voice_name TEXT NOT NULL, source TEXT NOT NULL, updated_by TEXT, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_user_id TEXT, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, occurred_at TEXT NOT NULL)`,
 ];
 let schemaReady = null;
@@ -156,7 +157,7 @@ async function startSession(env, user, status = 200) {
     env.DB.prepare("INSERT INTO auth_sessions (token_hash, user_id, expires_at) VALUES (?,?,?)").bind(await sha256(token), user.id, expires),
     env.DB.prepare("DELETE FROM auth_sessions WHERE expires_at < ?").bind(now()),
   ]);
-  return json({ user }, status, { "set-cookie": sessionCookie(token, SESSION_DAYS * 86400) });
+  return json({ user: { ...user, isAdmin: isAdmin(user, env) } }, status, { "set-cookie": sessionCookie(token, SESSION_DAYS * 86400) });
 }
 
 async function logout(req, env) {
@@ -443,6 +444,44 @@ async function finishCatalogInterview(req, user, env) {
   return json({ done: true });
 }
 
+/* Administration : comptes listés dans ADMIN_EMAILS */
+const isAdmin = (user, env) => !!user && String(env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean).includes(user.email);
+function needAdmin(user, env) { need(user); if (!isAdmin(user, env)) throw new HttpError(403, "forbidden", "Réservé à l’administrateur de la plateforme."); return user; }
+let voiceMemo = { at: 0, map: new Map() };
+async function agentVoiceMap(env) {
+  if (Date.now() - voiceMemo.at < 30000) return voiceMemo.map;
+  const { results } = await env.DB.prepare("SELECT agent_id, voice_id, voice_name FROM agent_voices").all();
+  voiceMemo = { at: Date.now(), map: new Map(results.map((r) => [r.agent_id, r])) };
+  return voiceMemo.map;
+}
+async function adminVoices(url, user, env) {
+  needAdmin(user, env);
+  if (!env.TTS || !env.TTS.library) throw new HttpError(409, "elevenlabs_required", "Configurez ElevenLabs (TTS_PROVIDER=elevenlabs et ELEVENLABS_API_KEY).");
+  const map = await agentVoiceMap(env);
+  const agents = (env.AGENTS || []).map((a) => ({ id: a.id, name: a.name, title: a.title, color: a.color, voiceName: map.get(a.id)?.voice_name || "Voix par défaut", custom: map.has(a.id) }));
+  try {
+    const lib = await env.TTS.library({ gender: url.searchParams.get("gender"), search: url.searchParams.get("search"), page: Math.max(0, parseInt(url.searchParams.get("page") || "0", 10) || 0) });
+    return json({ agents, model: env.TTS.model, ...lib });
+  } catch (e) { console.error("library_error", e && e.message); throw new HttpError(503, "library_unavailable", "Bibliothèque ElevenLabs indisponible (clé, quota ou réseau)."); }
+}
+async function assignVoice(req, user, env, agentId) {
+  needAdmin(user, env);
+  const agent = (env.AGENTS || []).find((a) => a.id === agentId);
+  if (!agent) throw new HttpError(404, "not_found", "Recruteur introuvable.");
+  const b = await body(req);
+  if (b.reset) { await env.DB.prepare("DELETE FROM agent_voices WHERE agent_id = ?").bind(agentId).run(); voiceMemo.at = 0; return json({ ok: true, voiceName: "Voix par défaut" }); }
+  const name = String(b.name || "Voix").slice(0, 50);
+  let voiceId;
+  try { voiceId = await env.TTS.addShared(String(b.ownerId || ""), String(b.voiceId || ""), `Répétition · ${agent.name} · ${name}`); }
+  catch (e) { console.error("add_voice_error", e && e.message); throw new HttpError(503, "add_voice_failed", "ElevenLabs a refusé l’ajout de cette voix (limite de voix du forfait ?)."); }
+  await env.DB.prepare(`INSERT INTO agent_voices (agent_id, voice_id, voice_name, source, updated_by, updated_at) VALUES (?,?,?,?,?,?)
+    ON CONFLICT(agent_id) DO UPDATE SET voice_id = excluded.voice_id, voice_name = excluded.voice_name, source = excluded.source, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
+    .bind(agentId, voiceId, name, "library", user.id, now()).run();
+  voiceMemo.at = 0;
+  await audit(env, user.id, "assign_agent_voice", "agent", agentId);
+  return json({ ok: true, voiceName: name });
+}
+
 /* Voix de Lina : synthèse Pocket TTS relayée, avec cache et limite de débit */
 const TTS_MAX_CHARS = 500, TTS_WINDOW_MS = 5 * 60 * 1000, TTS_MAX_PER_WINDOW = 60, TTS_CACHE_MAX = 120, TTS_CACHE_BYTES = 3 * 1024 * 1024;
 const ttsCache = new Map(), ttsHits = new Map();
@@ -460,10 +499,13 @@ async function textToSpeech(url, user, env, ctx) {
   const agents = env.AGENTS || [], agent = agents.find((a) => a.id === url.searchParams.get("agent")) || agents[0] || null;
   if (env.TTS.perAgentVoice && !agent) throw new HttpError(503, "tts_unavailable", "Aucun agent vocal configuré.");
   headers["content-type"] = env.TTS.contentType || "audio/wav";
-  const key = (env.TTS.perAgentVoice ? agent.id + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
+  const vmap = env.TTS.perAgentVoice ? await agentVoiceMap(env) : null;
+  const key = (env.TTS.perAgentVoice ? agent.id + ":" + (vmap.get(agent.id)?.voice_id || agent.voice) + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
   if (hit) { ttsCache.delete(key); ttsCache.set(key, hit); return new Response(hit, { headers: { ...headers, "x-tts-cache": "hit" } }); }
   let up;
-  try { up = await env.TTS.synthesize(text, lang, env.TTS.perAgentVoice ? { voice: agent.voice } : {}); }
+  let voice = agent && agent.voice;
+  if (env.TTS.perAgentVoice) { const custom = (await agentVoiceMap(env)).get(agent.id); if (custom) voice = custom.voice_id; }
+  try { up = await env.TTS.synthesize(text, lang, env.TTS.perAgentVoice ? { voice } : {}); }
   catch (e) { console.error("tts_error", e && e.message); throw new HttpError(503, "tts_unavailable", "La voix de Lina est momentanément indisponible."); }
   // Streaming vers le navigateur (la lecture démarre pendant la génération) + copie pour le cache.
   const [toClient, toCache] = up.body.tee();
@@ -515,7 +557,7 @@ async function aiFeedback(req, env) {
 /* Routeur */
 async function route(req, env, url, ctx) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", sttMode: env.STT ? env.STT.mode || "relay" : null, tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [], agentVoices: !!(env.TTS && env.TTS.perAgentVoice) });
+  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", sttMode: env.STT ? env.STT.mode || "relay" : null, tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [], agentVoices: !!(env.TTS && env.TTS.perAgentVoice), ttsModel: env.TTS && env.TTS.model ? env.TTS.model : null });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {
@@ -531,7 +573,7 @@ async function route(req, env, url, ctx) {
   if (p === "/api/auth/logout" && m === "POST") return logout(req, env);
 
   const user = await currentUser(req, env);
-  if (p === "/api/auth/me" && m === "GET") return json({ user });
+  if (p === "/api/auth/me" && m === "GET") return json({ user: user ? { ...user, isAdmin: isAdmin(user, env) } : null });
   if (p === "/api/me" && m === "DELETE") return deleteAccount(need(user), env);
 
   let mm;
@@ -541,6 +583,8 @@ async function route(req, env, url, ctx) {
   if (p === "/api/profile" && m === "PUT") return updateProfile(req, need(user, "candidate"), env);
   if (p === "/api/ai/suggest-skills" && m === "POST") { need(user, "candidate"); if (!env.AI) throw new HttpError(503, "ai_unavailable"); return aiSuggestSkills(req, env); }
   if (p === "/api/tts" && m === "GET") return textToSpeech(url, need(user, "candidate"), env, ctx);
+  if (p === "/api/admin/voices" && m === "GET") return adminVoices(url, user, env);
+  if ((mm = p.match(/^\/api\/admin\/agents\/([a-z0-9_-]+)\/voice$/)) && m === "POST") return assignVoice(req, user, env, mm[1]);
   if (p === "/api/agents" && m === "GET") { need(user); return json({ agents: (env.AGENTS || []).map(publicAgent), voices: !!(env.TTS && env.TTS.perAgentVoice) }); }
   if (p === "/api/stt/token" && m === "POST") return sttToken(req, need(user, "candidate"), env);
   if (p === "/api/tts/warmup" && m === "POST") {

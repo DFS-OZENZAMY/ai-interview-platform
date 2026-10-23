@@ -41,28 +41,57 @@ export function createTtsProvider(cfg = {}, deps = {}) {
 }
 
 /**
- * ElevenLabs (Flash v2.5 par défaut : faible latence, multilingue). Clé API uniquement côté serveur.
- * La voix est choisie par le serveur à partir de l'agent sélectionné (jamais fournie par le navigateur).
+ * ElevenLabs. Modèle par défaut : Eleven v4 Turbo (le plus réaliste en temps réel, ~100 ms d'inférence).
+ * Repli automatique si le compte n'y a pas accès : Multilingual v2 (très naturel) puis Flash v2.5.
+ * La voix est choisie par le serveur à partir de l'agent (jamais fournie par le navigateur). Clé uniquement côté serveur.
  */
+const MODEL_CHAIN = ["eleven_v4_turbo", "eleven_multilingual_v2", "eleven_flash_v2_5"];
+const NO_LANGUAGE_CODE = new Set(["eleven_multilingual_v2"]);   // paramètre non pris en charge par ce modèle
 function elevenLabsTts(cfg) {
   if (!cfg.ELEVENLABS_API_KEY) { console.warn("TTS_PROVIDER=elevenlabs sans ELEVENLABS_API_KEY : voix du navigateur"); return null; }
   const base = (cfg.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io").replace(/\/+$/, "");
-  const model = cfg.ELEVENLABS_TTS_MODEL || "eleven_flash_v2_5";
-  return {
+  const key = cfg.ELEVENLABS_API_KEY;
+  const chain = cfg.ELEVENLABS_TTS_MODEL ? [cfg.ELEVENLABS_TTS_MODEL, ...MODEL_CHAIN.filter((m) => m !== cfg.ELEVENLABS_TTS_MODEL)] : MODEL_CHAIN;
+  let working = null;                                            // premier modèle accepté par le compte, mémorisé
+  const api = async (path, init = {}) => {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 30000);
+    try { return await fetch(base + path, { ...init, signal: ctl.signal, headers: { "xi-api-key": key, ...(init.headers || {}) } }); }
+    finally { clearTimeout(t); }
+  };
+  const provider = {
     name: "elevenlabs", languages: ["fr", "en"], perAgentVoice: true, contentType: "audio/mpeg",
+    get model() { return working || chain[0]; },
     async warmup() { return true; },
     async synthesize(text, lang, { voice } = {}) {
       if (!/^[A-Za-z0-9]{8,40}$/.test(voice || "")) throw new Error("tts_bad_voice");
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 30000);
-      try {
-        const r = await fetch(`${base}/v1/text-to-speech/${voice}/stream?output_format=mp3_44100_128`, {
-          method: "POST", signal: ctl.signal,
-          headers: { "xi-api-key": cfg.ELEVENLABS_API_KEY, "content-type": "application/json", accept: "audio/mpeg" },
-          body: JSON.stringify({ text, model_id: model, language_code: lang === "en" ? "en" : "fr", voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
-        });
-        if (!r.ok || !r.body) throw new Error("tts_http_" + r.status);
-        return r;
-      } finally { clearTimeout(t); }
+      const models = working ? [working] : chain;
+      let last = null;
+      for (const model of models) {
+        const body = { text, model_id: model, voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true } };
+        if (!NO_LANGUAGE_CODE.has(model)) body.language_code = lang === "en" ? "en" : "fr";
+        const r = await api(`/v1/text-to-speech/${voice}/stream?output_format=mp3_44100_128`, { method: "POST", headers: { "content-type": "application/json", accept: "audio/mpeg" }, body: JSON.stringify(body) });
+        if (r.ok && r.body) { if (working !== model) { working = model; console.log("elevenlabs_model", model); } return r; }
+        last = r.status;
+        if (![400, 403, 404, 422].includes(r.status)) break;      // erreur non liée au modèle (clé, quota…) : inutile d'essayer les autres
+      }
+      throw new Error("tts_http_" + last);
+    },
+    /* Administration des voix (écran « Voix des recruteurs ») */
+    async library({ gender, search, page = 0 } = {}) {
+      const q = new URLSearchParams({ language: "fr", page_size: "24", page: String(page) });
+      if (gender === "male" || gender === "female") q.set("gender", gender);
+      if (search) q.set("search", String(search).slice(0, 60));
+      const r = await api(`/v1/shared-voices?${q}`);
+      if (!r.ok) throw new Error("library_http_" + r.status);
+      const j = await r.json();
+      return { hasMore: !!j.has_more, voices: (j.voices || []).map((v) => ({ voiceId: v.voice_id, ownerId: v.public_owner_id, name: v.name, gender: v.gender, age: v.age, accent: v.accent, useCase: v.use_case, description: (v.description || "").slice(0, 240), previewUrl: v.preview_url, language: v.language })) };
+    },
+    async addShared(ownerId, voiceId, name) {
+      if (!/^[A-Za-z0-9]{8,80}$/.test(ownerId || "") || !/^[A-Za-z0-9]{8,40}$/.test(voiceId || "")) throw new Error("bad_voice_ref");
+      const r = await api(`/v1/voices/add/${ownerId}/${voiceId}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ new_name: String(name).slice(0, 60) }) });
+      if (!r.ok) throw new Error("add_voice_http_" + r.status);
+      const j = await r.json(); return j.voice_id;
     },
   };
+  return provider;
 }

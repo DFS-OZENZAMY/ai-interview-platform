@@ -70,6 +70,7 @@ export default {
       QUESTIONS: await createQuestionSource(env),
       STT: createSttProvider(env),
       AGENTS: loadAgents(env),
+      ADMIN_EMAILS: env.ADMIN_EMAILS,
       TTS: createTtsProvider(env, env.LINA_VOICE ? { container: (r) => env.LINA_VOICE.get(env.LINA_VOICE.idFromName("lina-fr")).fetch(r) } : {}),
       COACH_INVITE_CODE: env.COACH_INVITE_CODE,
       COOKIE_SECURE: env.COOKIE_SECURE !== "false",
