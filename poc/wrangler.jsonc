@@ -8,9 +8,17 @@
   "d1_databases": [{ "binding": "DB", "database_name": "ai-interview-poc" }],
   "ai": { "binding": "AI" },
   "observability": { "enabled": true },
-  // Préversions (branches hors production, commande `wrangler preview`) : elles n'héritent de rien.
-  // Volontairement SANS base de données : l'interface y fonctionne en mode démo (données dans le
-  // navigateur), ce qui évite tout accès aux données de production depuis une branche de test.
+  // Conserver les variables saisies dans le tableau de bord Cloudflare (QUESTION_SOURCE, STT…) lors des déploiements.
+  "keep_vars": true,
+
+  // Voix de Lina : Kyutai Pocket TTS dans Cloudflare Containers (forfait Workers Paid requis).
+  // Le conteneur démarre à la demande et s'éteint après 10 min d'inactivité. standard-2 = 1 vCPU, 6 Go.
+  "containers": [{ "class_name": "LinaVoice", "image": "./voice/Dockerfile", "instance_type": "standard-2", "max_instances": 2 }],
+  "durable_objects": { "bindings": [{ "name": "LINA_VOICE", "class_name": "LinaVoice" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LinaVoice"] }],
+  "vars": { "TTS_PROVIDER": "pocket-tts", "POCKET_TTS_VOICE_FR": "estelle" },
+
+  // Préversions (branches hors production) : sans base ni conteneur, en mode démo et voix du navigateur.
   "previews": {
     "ai": { "binding": "AI" }
   }

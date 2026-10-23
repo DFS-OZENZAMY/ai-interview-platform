@@ -112,6 +112,29 @@ Ou bien `docker compose --profile voix up -d` (service `voix-fr` ; **non testé*
 
 **Tests :** `tests/mock_pocket_tts.py` imite `pocket-tts serve` (multipart `text` / `voice_url`, WAV en streaming) ; `tests/tts_api_test.py` 11/11 sur Node **et** Cloudflare Workers (premiers octets en ~20 ms, cache en ~10 ms, voix imposée, limite de débit) ; parcours navigateur : Lina parle via Pocket TTS, y compris les relances, avec repli propre si le service est coupé. **Non testé :** le vrai modèle (Hugging Face inaccessible depuis l’environnement de développement) ; la voix réelle reste à écouter et à valider par l’équipe.
 
+### Voix de Lina directement sur Cloudflare (Containers)
+
+Workers AI ne propose pas Kyutai ; Pocket TTS tourne donc dans **Cloudflare Containers**, attaché au Worker de la plateforme. Tout est déjà déclaré dans `wrangler.jsonc` (racine et `poc/`) : rien d’autre à héberger.
+
+```text
+Navigateur ─► Worker ai-interview-platform ─► Durable Object LinaVoice ─► conteneur Pocket TTS (poc/voice/Dockerfile)
+              /api/tts (session vérifiée)      démarre / attend / relaie       modèle français + voix « estelle » intégrés
+```
+
+- **Image** (`poc/voice/Dockerfile`) : Python 3.12, PyTorch CPU, `pocket-tts==4.0.1`. Le modèle et la voix sont téléchargés **pendant le build**, puis le conteneur démarre hors ligne (`enableInternet: false`, `HF_HUB_OFFLINE=1`).
+- **Instance** : `standard-2` (1 vCPU, 6 Go), 2 instances au maximum. Si la voix est plus lente que la parole, passer à `standard-3` (2 vCPU).
+- **Cycle de vie** (`server/hosts/lina-voice.js`, API native `ctx.container`, sans dépendance) : démarrage à la première demande, attente de disponibilité (2 min au maximum), extinction après **10 minutes sans activité**. Aucune URL publique : seul le Worker peut parler au conteneur.
+- **Démarrage à froid** : l’écran « Votre parcours est prêt » appelle `/api/tts/warmup`, ce qui réveille le conteneur pendant que le candidat lit ses conseils.
+- **Repli** : si le conteneur n’est pas prêt ou tombe en panne, `/api/tts` renvoie 503 et Lina reprend la voix du navigateur ; l’entretien n’est jamais bloqué.
+- `keep_vars: true` : les variables saisies dans le tableau de bord (`QUESTION_SOURCE`, `STT_PROVIDER`…) ne sont pas effacées à chaque déploiement.
+
+**Pré-requis :**
+1. Forfait **Workers Paid** (Containers n’est pas inclus dans le forfait gratuit), facturation à l’usage.
+2. La branche de production Cloudflare doit être `feat/poc-plug-and-play` avec la commande `npx wrangler deploy` : selon la documentation Cloudflare, seules les commandes `wrangler deploy` construisent et mettent à jour les conteneurs ; les préversions tournent sans voix serveur.
+3. Après le premier déploiement, compter quelques minutes avant que le conteneur réponde (provisionnement Cloudflare).
+
+**Tests :** `tests/lina_voice_container_test.mjs` 12/12 avec un `ctx.container` simulé (démarrage à froid, démarrage unique sous requêtes simultanées, extinction programmée, panne et reprise, routes filtrées, pré-chauffage, synthèse de bout en bout) ; configuration validée par `wrangler deploy --dry-run` (liaisons conteneur, D1, IA, variables) ; plateforme complète sous Wrangler avec la nouvelle configuration : 73/73. **Non testé :** la construction réelle de l’image et le conteneur sur Cloudflare (Docker indisponible dans l’environnement de développement) ; la vitesse réelle de Pocket TTS sur 1 vCPU reste à mesurer.
+
 ## Règles de sécurité communes à tous les hôtes
 - Mots de passe PBKDF2-SHA256, session en cookie `HttpOnly` (`Secure` dès que `PUBLIC_URL` est en HTTPS), jeton stocké haché.
 - Écritures uniquement en JSON et depuis la même origine ; corps limités à 256 Ko sur l’hôte Node.

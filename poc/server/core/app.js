@@ -523,6 +523,11 @@ async function route(req, env, url, ctx) {
   if (p === "/api/profile" && m === "PUT") return updateProfile(req, need(user, "candidate"), env);
   if (p === "/api/ai/suggest-skills" && m === "POST") { need(user, "candidate"); if (!env.AI) throw new HttpError(503, "ai_unavailable"); return aiSuggestSkills(req, env); }
   if (p === "/api/tts" && m === "GET") return textToSpeech(url, need(user, "candidate"), env, ctx);
+  if (p === "/api/tts/warmup" && m === "POST") {
+    need(user, "candidate");
+    if (env.TTS && env.TTS.warmup) { const w = env.TTS.warmup().catch(() => false); if (ctx && ctx.waitUntil) ctx.waitUntil(w); }
+    return json({ ok: true }, 202);
+  }
   if (p === "/api/interview/start" && m === "POST") return startCatalogInterview(req, need(user, "candidate"), env);
   if (p === "/api/interview/next" && m === "POST") return nextCatalogQuestion(req, need(user, "candidate"), env);
   if (p === "/api/interview/finish" && m === "POST") return finishCatalogInterview(req, need(user, "candidate"), env);

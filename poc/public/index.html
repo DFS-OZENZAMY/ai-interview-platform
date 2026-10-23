@@ -401,7 +401,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v7 : voix Kyutai Pocket TTS) */
+/* Répétition — POC AI Interview Platform (v8 : voix Kyutai dans Cloudflare Containers) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1343,6 +1343,7 @@ function prep(){
     <div class="nav-row"><button class="btn quiet" id="edit">Modifier les réglages</button><button class="btn primary" id="go">Démarrer l’entretien</button></div>
   </section>`;
   $("#voice").onchange=e=>S.voice=e.target.checked;
+  if(S.voice&&ttsServer(P.lang))call("POST","/api/tts/warmup",{}).catch(()=>{});   // réveille la voix de Lina pendant la lecture des conseils
   $("#edit").onclick=()=>go("simConfig");
   $("#go").onclick=()=>{S.cam=!!($("#cam")&&$("#cam").checked);startSession(plan.map(q=>q.id),false,null,$("#go"))};
 }

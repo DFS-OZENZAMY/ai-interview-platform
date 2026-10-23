@@ -1,14 +1,24 @@
 {
-  // Configuration Cloudflare du POC Répétition, utilisable depuis la RACINE du dépôt.
-  // (Équivalent de poc/wrangler.jsonc si le répertoire racine du build Cloudflare est « poc ».)
+  // Configuration Cloudflare du POC Répétition, utilisable depuis la RACINE du dépôt (équivalent de poc/wrangler.jsonc).
   "name": "ai-interview-platform",
   "main": "poc/server/hosts/cloudflare.js",
   "compatibility_date": "2026-09-01",
   "assets": { "directory": "./poc/public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  // Production : base D1 créée automatiquement au premier déploiement.
   "d1_databases": [{ "binding": "DB", "database_name": "ai-interview-poc" }],
   "ai": { "binding": "AI" },
   "observability": { "enabled": true },
-  // Préversions : sans base de données (mode démo), pour ne jamais toucher aux données de production.
+  // Conserver les variables saisies dans le tableau de bord Cloudflare (QUESTION_SOURCE, STT…) lors des déploiements.
+  "keep_vars": true,
+
+  // Voix de Lina : Kyutai Pocket TTS dans Cloudflare Containers (forfait Workers Paid requis).
+  // Le conteneur démarre à la demande et s'éteint après 10 min d'inactivité. standard-2 = 1 vCPU, 6 Go.
+  "containers": [{ "class_name": "LinaVoice", "image": "./poc/voice/Dockerfile", "instance_type": "standard-2", "max_instances": 2 }],
+  "durable_objects": { "bindings": [{ "name": "LINA_VOICE", "class_name": "LinaVoice" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["LinaVoice"] }],
+  "vars": { "TTS_PROVIDER": "pocket-tts", "POCKET_TTS_VOICE_FR": "estelle" },
+
+  // Préversions (branches hors production) : sans base ni conteneur, en mode démo et voix du navigateur.
   "previews": {
     "ai": { "binding": "AI" }
   }

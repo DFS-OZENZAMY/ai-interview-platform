@@ -5,6 +5,7 @@ import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
 import { createSttProvider, openSttSession } from "../stt/index.js";
 import { createTtsProvider } from "../tts/index.js";
+export { LinaVoice } from "./lina-voice.js";   // Durable Object du conteneur Pocket TTS (Cloudflare Containers)
 
 let api;
 /** Workers peut livrer les trames binaires en Blob : conversion asynchrone, dans l'ordre d'arrivée. */
@@ -67,7 +68,7 @@ export default {
       AI: createAI(env, { AI: env.AI }),
       QUESTIONS: await createQuestionSource(env),
       STT: createSttProvider(env),
-      TTS: createTtsProvider(env),
+      TTS: createTtsProvider(env, env.LINA_VOICE ? { container: (r) => env.LINA_VOICE.get(env.LINA_VOICE.idFromName("lina-fr")).fetch(r) } : {}),
       COACH_INVITE_CODE: env.COACH_INVITE_CODE,
       COOKIE_SECURE: env.COOKIE_SECURE !== "false",
       RUNTIME: "cloudflare-workers",

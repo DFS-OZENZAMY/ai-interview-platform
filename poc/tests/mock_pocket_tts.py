@@ -17,7 +17,13 @@ class H(BaseHTTPRequestHandler):
         self.send_response(200 if self.path == "/health" else 404); self.send_header("content-type", "application/json"); self.send_header("content-length", str(len(body))); self.end_headers(); self.wfile.write(body)
     def do_POST(self):
         if self.path != "/tts": self.send_response(404); self.send_header("content-length", "0"); self.end_headers(); return
-        raw = self.rfile.read(int(self.headers["content-length"]))
+        if self.headers.get("content-length"): raw = self.rfile.read(int(self.headers["content-length"]))
+        else:                                                    # corps « chunked », accepté comme le fait uvicorn
+            raw = b""
+            while True:
+                n = int(self.rfile.readline().strip(), 16)
+                if n == 0: self.rfile.readline(); break
+                raw += self.rfile.read(n); self.rfile.readline()
         msg = BytesParser(policy=default).parsebytes(b"Content-Type: " + self.headers["content-type"].encode() + b"\r\n\r\n" + raw)
         fields = {p.get_param("name", header="content-disposition"): p.get_content() for p in msg.iter_parts()}
         text, voice = fields.get("text", "").strip(), fields.get("voice_url")
