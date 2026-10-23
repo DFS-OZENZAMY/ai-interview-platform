@@ -1,6 +1,6 @@
 # Changelog
 
-Le projet est encore au stade **POC documentaire / pré-implémentation**. Aucun numéro de version applicative ni release de production n'est revendiqué.
+Le projet est au stade **POC technique**, avec banque de questions Supabase déployée et connecteur S2-04 minimal. Aucune release de production ni version applicative complète n'est revendiquée.
 
 ## Unreleased — 2026-10-22
 
@@ -11,11 +11,18 @@ Le projet est encore au stade **POC documentaire / pré-implémentation**. Aucun
 - Templates d'issues et de Pull Request, conventions EditorConfig/GitAttributes, Dependabot GitHub Actions.
 - Validation structurelle JSON et tests de non-régression sur le corpus.
 
+- Migrations PostgreSQL 0001–0006 sur projet Supabase dédié, 120 questions importées sous statut draft.
+- Edge Function Auth question-bank v4, séparation candidat / moteur / évaluateur et API de sessions sécurisées.
+- Snapshots immuables de questions, sélection dynamique sans doublons et clôture contrôlée des sessions.
+- Adaptateur et orchestrateur S2-04, tests PostgreSQL sur base réelle/éphémère, tests Node/Deno.
+- Script de recette HTTP avec comptes Supabase Auth de test à provisionner.
+
 ### Changed
 - README actualisé pour refléter le POC et le Sprint 2.
 - Sécurité et contribution alignées avec un dépôt **public** et l'absence de protections bloquantes présumées.
 
 ### Known gaps
-- Pas de publication de questions ni d'intégration Supabase/S2-04.
+- Aucune question publiée : corpus encore soumis à revue humaine.
+- Raccordement technique S2-04 livré, mais moteur conversationnel IA, interface candidat et scoring incomplets.
 - 100 questions générées par IA nécessitent revue humaine ; validation technique experte ouverte.
-- CI ajoutée, exécution des workflows à confirmer séparément.
+- CI PostgreSQL/Node/Deno confirmée verte. Recette HTTP réelle non exécutée (zéro utilisateur Auth dans le projet au 22/10/2026).

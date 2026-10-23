@@ -6,7 +6,13 @@ on:
       - 'data/question-bank/**'
       - 'scripts/validate_question_bank.py'
       - 'scripts/question_bank_catalog.py'
+      - 'supabase/functions/question-bank/**'
+      - 'src/integrations/s2-04/**'
+      - 'src/interview-engine/**'
+      - 'tests/test_interview_session_orchestrator.mjs'
+      - 'tests/test_s2_04_bridge.mjs'
       - 'scripts/generate_question_bank_seed_sql.py'
+      - 'scripts/smoke_question_bank_http.mjs'
       - 'tests/test_question_bank.py'
       - 'tests/test_postgres_migrations_static.py'
       - 'db/postgres/**'
@@ -16,7 +22,13 @@ on:
       - 'data/question-bank/**'
       - 'scripts/validate_question_bank.py'
       - 'scripts/question_bank_catalog.py'
+      - 'supabase/functions/question-bank/**'
+      - 'src/integrations/s2-04/**'
+      - 'src/interview-engine/**'
+      - 'tests/test_interview_session_orchestrator.mjs'
+      - 'tests/test_s2_04_bridge.mjs'
       - 'scripts/generate_question_bank_seed_sql.py'
+      - 'scripts/smoke_question_bank_http.mjs'
       - 'tests/test_question_bank.py'
       - 'tests/test_postgres_migrations_static.py'
       - 'db/postgres/**'
@@ -79,12 +91,46 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -f db/postgres/migrations/0002_publication_guards.sql
           psql -X -v ON_ERROR_STOP=1 -f db/postgres/migrations/0003_question_bank_indexes.sql
           psql -X -v ON_ERROR_STOP=1 -f db/postgres/migrations/0004_private_catalog_boundary.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres/migrations/0005_interview_session_snapshots.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres/migrations/0006_complete_interview_session.sql
       - name: Test publication guards, audit and immutability
         run: |
           psql -X -v ON_ERROR_STOP=1 -f db/postgres/tests/0001_publication_contract.sql
           psql -X -v ON_ERROR_STOP=1 -f db/postgres/tests/0002_private_catalog_boundary.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres/tests/0003_published_projection_contract.sql
+          psql -X -v ON_ERROR_STOP=1 -f db/postgres/tests/0004_interview_session_snapshots.sql
       - name: Generate and apply draft corpus seed
         run: |
           python scripts/generate_question_bank_seed_sql.py > /tmp/question_bank_seed.sql
           psql -X -v ON_ERROR_STOP=1 -f /tmp/question_bank_seed.sql
           psql -X -v ON_ERROR_STOP=1 -f /tmp/question_bank_seed.sql
+
+  edge-function-typecheck:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check Edge Function TypeScript
+        run: deno check supabase/functions/question-bank/index.ts
+      - name: Test Edge Function authorization policy
+        run: deno test supabase/functions/question-bank/policy_test.ts
+
+  s2-04-adapter-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run S2-04 bridge adapter tests
+        run: |
+          node --test tests/test_s2_04_bridge.mjs tests/test_interview_session_orchestrator.mjs
+          node --check scripts/smoke_question_bank_http.mjs

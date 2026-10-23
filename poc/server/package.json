@@ -1,0 +1,20 @@
+{
+  "name": "repetition-server",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Serveur Répétition indépendant de l'hébergeur (Node.js, Docker, Cloudflare Workers)",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning hosts/node.js",
+    "test:contract": "node ../tests/contract_test.mjs"
+  },
+  "optionalDependencies": {
+    "pg": "^8.13.1"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

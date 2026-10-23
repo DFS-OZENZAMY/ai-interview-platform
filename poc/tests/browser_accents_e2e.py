@@ -1,0 +1,41 @@
+import asyncio,sys,json
+from playwright.async_api import async_playwright
+BASE=sys.argv[1]; STATS=sys.argv[2]
+async def main():
+  async with async_playwright() as p:
+    b=await p.chromium.launch(args=["--autoplay-policy=no-user-gesture-required"]); pg=await (await b.new_context(viewport={"width":1280,"height":900})).new_page(); errs=[]
+    pg.on("pageerror",lambda e:errs.append(str(e))); pg.on("dialog",lambda d:asyncio.ensure_future(d.accept()))
+    nxt=lambda: pg.click("#obForm [type=submit]")
+    await pg.goto(BASE); await pg.wait_for_timeout(800); await pg.click("text=Créer mon compte gratuit")
+    await pg.fill("[name=name]","Othmane Admin"); await pg.fill("[name=email]","admin@t.io"); await pg.fill("[name=password]","password12"); await pg.check("[name=consent]"); await pg.click("#authForm [type=submit]"); await pg.wait_for_timeout(800)
+    await pg.click("#nav >> text=Voix"); await pg.wait_for_timeout(1200)
+    print("accents FR :", [x.strip() for x in await pg.locator("#vf [name=accent] option").all_text_contents()][1:])
+    await pg.click(".new-agent summary"); await pg.fill("#na [name=name]","Amina"); await pg.fill("#na [name=title]","Responsable RH"); await pg.fill("#na [name=description]","Entretien RH bienveillant, accent marocain."); await pg.select_option("#na [name=preset]","lina")
+    await pg.click("#na [type=submit]"); await pg.wait_for_timeout(1300)
+    print("recruteurs :", [x.strip() for x in await pg.locator(".agent-admin .req-top b").all_text_contents()])
+    await pg.select_option("#vf [name=accent]","moroccan"); await pg.wait_for_timeout(1200)
+    print("voix accent marocain :", [x.strip() for x in await pg.locator(".voice-card .req-top b").all_text_contents()])
+    await pg.select_option(".voice-card:has(.req-top b:text-is('Amina')) >> select","amina"); await pg.click(".voice-card:has(.req-top b:text-is('Amina')) >> [data-assign]"); await pg.wait_for_timeout(1300)
+    print("Amina FR :", " ".join((await pg.text_content(".agent-admin:has-text('Responsable RH') .vline >> nth=0")).split()))
+    await pg.click("[data-lang-tab=en]"); await pg.wait_for_timeout(1100)
+    print("accents EN :", [x.strip() for x in await pg.locator("#vf [name=accent] option").all_text_contents()][1:])
+    await pg.select_option("#vf [name=accent]","british"); await pg.wait_for_timeout(1100)
+    await pg.select_option(".voice-card:has(.req-top b:text-is('Oliver')) >> select","karim"); await pg.click(".voice-card:has(.req-top b:text-is('Oliver')) >> [data-assign]"); await pg.wait_for_timeout(1300)
+    print("Karim EN :", " ".join((await pg.text_content(".agent-admin:has-text('Karim') .vline >> nth=1")).split()))
+    await pg.screenshot(path="accents_admin.png",full_page=True)
+    # onboarding rapide puis simulation avec Amina
+    await pg.click("#nav >> text=Mon inscription"); await pg.wait_for_timeout(500)
+    await pg.click("label.choice:has-text('Jeune diplômé·e')"); await pg.fill("[data-p='situation.targetJob']","Chargé·e RH"); await nxt()
+    await pg.click("label.choice:has-text('Master')"); await pg.fill("[data-p='background.education.field']","Ressources humaines"); await pg.fill("[data-p='background.yearsExperience']","1"); await nxt()
+    await pg.click("label.choice:has-text('premier emploi')"); await pg.click(".chip:has-text('Progresser à l’oral')"); await pg.click(".chip:has-text('Communication')"); await nxt()
+    await pg.select_option("#lang-0","Français"); await pg.click("label.cefr-opt:has-text('C2')"); await pg.click("label.choice:has-text('Français') >> nth=0"); await nxt(); await pg.wait_for_timeout(200)
+    await pg.click(".skill-col >> nth=1 >> .chip.ghost >> nth=0"); await nxt(); await pg.wait_for_timeout(200); await pg.click("#obFinish"); await pg.wait_for_timeout(600); await pg.click("#toDash"); await pg.wait_for_timeout(300)
+    await pg.click("#st"); await pg.click("#next"); await pg.wait_for_timeout(500)
+    print("cartes candidat :", [" ".join(x.split()) for x in await pg.locator(".agent-card").all_text_contents()][-1][:110])
+    print("accent Karim :", " ".join((await pg.text_content("label.agent-card:has-text('Karim') .agent-accents")).split()))
+    await pg.screenshot(path="accents_candidate.png",full_page=True)
+    await pg.click("label.agent-card:has-text('Amina')"); await pg.click("#simForm [type=submit]"); await pg.wait_for_timeout(300); await pg.click("#go"); await pg.wait_for_timeout(1800)
+    st=json.load(open(STATS)); t=st["tts"][-1]; print("entretien : voix", t["voice"], "|", t["text"][:45])
+    print("studio :", (await pg.text_content(".stage-id b")).strip(), "·", (await pg.text_content(".stage-id span")).strip())
+    print("errors",errs); await b.close()
+asyncio.run(main())

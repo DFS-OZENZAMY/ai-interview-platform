@@ -1,6 +1,6 @@
 # AI Interview Platform
 
-Plateforme d'entraînement aux entretiens d'embauche assistée par l'IA. **Statut : POC en cours, Sprint 2 en conception et préparation documentaire (Sprint 1 partiel).** Aucun choix définitif de stack applicative ni de fournisseur IA n'est validé. Le dépôt contient des spécifications, un corpus de questions fictif et un validateur Python, mais pas encore d'application de simulation intégrée.
+Plateforme d'entraînement aux entretiens d'embauche assistée par l'IA. **Statut : POC en développement, Sprint 2 — banque S2-03 déployée et raccordement serveur S2-04 testé.** Base Supabase dédiée, service protégé par JWT et moteur de sessions minimal disponibles. L'interface candidat, les relances IA conversationnelles et la notation ne sont pas encore livrées.
 
 ## Démarrage rapide pour contributeurs
 
@@ -36,11 +36,11 @@ Le candidat crée son compte et renseigne son profil (expérience, poste visé, 
 | --- | --- |
 | S1-01 Fondation Git / DevOps | Livré (PR #1) |
 | S1-02 Architecture et modèle de données conceptuel | Livré (PR #2), proposition v0.1 à affiner |
-| Stack frontend / backend / base de données | Non décidée |
+| Stack frontend / backend / base de données | Supabase PostgreSQL + Edge Function adoptés pour S2-03 ; frontend et architecture finale à confirmer |
 | Fournisseur avatar / voix / transcription | Non validé, POC prioritaire |
-| Corpus S2-03 | 120 questions en brouillon GitHub (50 RH / 70 techniques) ; revue qualité et implémentation en attente |
+| Corpus S2-03 | 120 questions FR/EN importées en Supabase, toutes en brouillon ; sécurité/versioning et handoff S2-04 implémentés, revue métier en attente |
 | Calibration S2-03 | 12 cas simulés documentés ; moteur de notation non testé |
-| Implémentation applicative | Non démontrée dans le dépôt à ce jour |
+| Implémentation applicative | Edge Function question-bank v4 active ; API S2-03 et orchestrateur de session S2-04 minimal ; aucune application candidat complète ni scoring |
 
 La fusion de la PR #2 intègre une proposition d'architecture ; elle ne valide pas les choix de stack, de fournisseurs, d'hébergement ou de conformité.
 
@@ -55,6 +55,8 @@ La fusion de la PR #2 intègre une proposition d'architecture ; elle ne valide p
 - [`docs/AUDIT_GITHUB_2026-10-22.md`](docs/AUDIT_GITHUB_2026-10-22.md) : constats d'audit et registre des tâches à synchroniser.
 - [`docs/S2-03_Question_Bank_Specification.md`](docs/S2-03_Question_Bank_Specification.md) : spécification des banques de questions.
 - [`docs/S2-03_Implementation_Tracker.md`](docs/S2-03_Implementation_Tracker.md) : suivi opérationnel S2-03.
+- [`docs/S2-03_Technical_Closure_2026-10-22.md`](docs/S2-03_Technical_Closure_2026-10-22.md) : preuves SQL/CI/Supabase et conditions de recette HTTP restantes.
+- [`docs/S2-03_S2-04_Integration.md`](docs/S2-03_S2-04_Integration.md) : API sécurisée, sessions et snapshots versionnés.
 - [`docs/S2-03_120_Questions_Status.md`](docs/S2-03_120_Questions_Status.md) : détail du corpus 120 questions.
 - [`docs/S2-03_Calibration_Grilles_Pilote.md`](docs/S2-03_Calibration_Grilles_Pilote.md) : 12 simulations de calibration (non tests du moteur).
 - [`data/question-bank/README.md`](data/question-bank/README.md) : formats et provenance des questions.
@@ -67,7 +69,10 @@ docs/           Décisions, conventions, sécurité, architecture
 .github/        Modèles d'issue et de PR, workflow de vérification
 data/question-bank/   Questions bilingues au statut draft et grilles de référence
 scripts/              Validation du corpus JSON
-src/, tests/          À créer après validation de l'architecture et de la stack
+src/                 Adaptateur S2-04 et orchestrateur de sessions
+supabase/functions/   Edge Function sécurisée et tests de rôle
+db/postgres/          Migrations, scénarios transactionnels et contrats
+tests/               Suite de tests Python et Node
 ```
 
 ## Contribuer
