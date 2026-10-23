@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070f26">
+  <title>AI Interview Platform — Local preview</title>
+  <style>
+    :root{color-scheme:dark;--bg:#060e22;--card:#101c38;--card2:#12254a;--ink:#eff5ff;--sub:#a0aecb;--stroke:rgba(179,205,252,.17);--sky:#65c7ff;--mint:#6ce7c1;--violet:#a59bff}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(ellipse 70% 55% at 65% -8%,#193b77 0%,transparent 75%),radial-gradient(ellipse 55% 50% at 7% 102%,#102951 0%,transparent 80%),var(--bg);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);min-height:100vh}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}
+    button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
+    .wrap{max-width:1160px;margin:0 auto;padding:28px 24px 64px}
+    header{display:flex;justify-content:space-between;align-items:center;gap:18px;padding-bottom:30px;border-bottom:1px solid var(--stroke)}
+    .brand{display:flex;align-items:center;gap:13px}.symbol{display:grid;place-items:center;width:43px;height:43px;border:1px solid #89d5ff55;border-radius:14px;background:linear-gradient(150deg,#357bdb88,#6cc5f522);font-size:21px;font-weight:800}
+    .brand strong{display:block;letter-spacing:.04em}.brand small{display:block;color:var(--sub);font-size:12px}
+    .live{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #6ce7c140;border-radius:100px;color:#adfbe5;background:#6ce7c10b;font-size:12px}
+    .dot{width:7px;height:7px;background:var(--mint);border-radius:50%;box-shadow:0 0 0 4px #6ce7c115}
+    .hero{padding:40px 0 20px}.eyebrow{font-size:12px;font-weight:750;text-transform:uppercase;letter-spacing:.16em;color:var(--sky)}
+    h1{font-size:clamp(30px,4.3vw,53px);line-height:1.12;letter-spacing:-.045em;margin:15px 0}
+    .hero p{max-width:730px;color:var(--sub);font-size:16px;margin:0 0 21px}
+    .notice{display:flex;align-items:start;gap:11px;background:#ffcf5c0b;border:1px solid #ffcf5c42;border-radius:16px;padding:15px 17px;color:#f7e1a9}
+    .notice svg{flex:none;margin-top:2px}.notice b{color:#fff0c4}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}.stat,.card{background:linear-gradient(135deg,rgba(26,48,89,.82),rgba(12,25,50,.9));border:1px solid var(--stroke);border-radius:20px;box-shadow:0 14px 50px #01071530}.stat{padding:18px 20px}.stat strong{display:block;font-size:27px;line-height:1.1;letter-spacing:-.03em}.stat small{color:var(--sub);display:block;margin-top:7px;font-size:12px}
+    .tabs{display:flex;gap:7px;margin:28px 0 16px}.tab{border:1px solid transparent;color:#c4d1e8;padding:11px 18px;background:transparent;border-radius:11px}.tab.on{color:white;background:#18315b;border-color:#4871ae}
+    .layout{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}.card{padding:24px}.card h2{font-size:18px;letter-spacing:-.018em;margin:0 0 5px}.muted{color:var(--sub);font-size:13px}
+    .form-field{margin-top:18px}.form-field label{display:block;font-size:12px;color:#c5d2ee;font-weight:650;margin-bottom:7px}
+    select,input,textarea{width:100%;background:#07142d;color:var(--ink);border:1px solid #47608480;border-radius:12px;padding:12px 13px;min-height:44px}
+    select option{background:#07142d}textarea{resize:vertical;min-height:140px;line-height:1.55}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.primary{background:linear-gradient(120deg,#4399df,#75c9f8);color:#06182f;font-weight:800;border:none;padding:13px 18px;border-radius:12px;box-shadow:0 9px 24px #438fdb24}
+    .primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}.secondary{background:#192f57;color:#d9ebff;border:1px solid #42628c;padding:11px 16px;border-radius:12px}
+    .full{width:100%;margin-top:20px}.gap{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+    .pill{display:inline-flex;align-items:center;border:1px solid #577ca583;background:#15315b88;color:#a8d8ff;font-size:11px;font-weight:750;padding:5px 9px;border-radius:100px;letter-spacing:.04em}
+    .pill.warn{color:#f3db9c;border-color:#86672e;background:#69521f35}.pill.mint{color:#a4e9d7;border-color:#37887966;background:#24584f40}
+    .empty{min-height:345px;display:grid;place-content:center;text-align:center}.empty .big{font-size:54px;opacity:.5;margin-bottom:8px}
+    .prompt{font-size:clamp(22px,3vw,32px);line-height:1.35;font-weight:660;letter-spacing:-.03em;margin:22px 0 14px}
+    .rule{border:0;border-top:1px solid var(--stroke);margin:23px 0}.tip{background:#091830;border:1px solid #48699255;border-radius:12px;padding:14px 16px;color:#bcd1ec;font-size:13px}
+    .progress{height:7px;border-radius:50px;background:#243656;overflow:hidden;margin:10px 0}.progress span{display:block;height:100%;background:linear-gradient(90deg,#63afe9,#6de8cc);transition:width .25s}
+    .smalllabel{font-size:12px;color:var(--sub);font-weight:650}.error{color:#ffb4b4;font-size:13px;margin-top:10px;min-height:20px}
+    .review-row{border-bottom:1px solid var(--stroke);padding:18px 0}.review-row:last-child{border-bottom:0}.review-row h3{font-size:15px;font-weight:690;margin:8px 0}
+    .answer{white-space:pre-wrap;color:#b4c7e9;font-size:13px;margin:6px 0 0}
+    .catalog-toolbar{display:grid;grid-template-columns:1fr 180px 140px;gap:10px;margin:22px 0}
+    .bank-card{padding:16px 0;border-top:1px solid var(--stroke)}.bank-card p{font-size:15px;margin:9px 0 0}
+    .bank-card .smalllabel{margin:0 6px}.bank-list{max-height:620px;overflow:auto;padding-right:9px}
+    .hidden{display:none!important}.foot{margin-top:35px;color:#7990b3;font-size:12px;text-align:center}
+    @media(max-width:800px){.layout{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.catalog-toolbar{grid-template-columns:1fr}.wrap{padding:18px 15px 45px}header{align-items:flex-start}.hero{padding-top:28px}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><div class="symbol">AI</div><div><strong>INTERVIEW PLATFORM</strong><small>Development workspace · S2-03 / S2-04</small></div></div>
+    <div class="live"><span class="dot"></span> Localhost · environnement isolé</div>
+  </header>
+  <section class="hero">
+    <div class="eyebrow">Prototype fonctionnel · Sprint 2</div>
+    <h1>Explorez le parcours<br>d'entretien IA.</h1>
+    <p>Découvrez le référentiel bilingue, configurez une simulation et parcourez les questions depuis votre navigateur.</p>
+    <div class="notice">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 4h.01"/></svg>
+      <div><b>Mode démonstration locale — non connecté à Supabase.</b> Les questions affichées sont des brouillons non validés. Le déroulement est simulé : pas d'IA conversationnelle, pas de scoring, pas d'authentification et aucune donnée enregistrée en base.</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><strong id="total">—</strong><small>Questions disponibles</small></div>
+      <div class="stat"><strong id="rhcount">—</strong><small>Questions RH</small></div>
+      <div class="stat"><strong id="techcount">—</strong><small>Questions techniques</small></div>
+      <div class="stat"><strong id="translations">—</strong><small>Versions linguistiques</small></div>
+    </div>
+  </section>
+  <nav class="tabs" aria-label="Navigation" role="tablist">
+    <button class="tab on" id="simulationTab" role="tab" aria-selected="true">Simulation locale</button>
+    <button class="tab" id="catalogTab" role="tab" aria-selected="false">Explorateur de questions</button>
+  </nav>
+  <section id="simulation" class="layout">
+    <aside class="card">
+      <h2>Configurer la simulation</h2>
+      <div class="muted">Un aperçu de la logique d'entretien, sans publication réelle.</div>
+      <div class="form-field"><label for="family">Famille de questions</label><select id="family"><option value="rh">RH & comportemental</option><option value="technical">Techniques</option></select></div>
+      <div class="cols">
+        <div class="form-field"><label for="language">Langue</label><select id="language"><option value="fr">Français</option><option value="en">English</option></select></div>
+        <div class="form-field"><label for="count">Questions</label><select id="count"><option value="3">3</option><option value="5" selected>5</option><option value="8">8</option></select></div>
+      </div>
+      <div class="form-field"><label for="category">Domaine</label><select id="category"><option value="">Tous les domaines</option></select></div>
+      <div class="form-field"><label for="difficulty">Niveau</label><select id="difficulty"><option value="">Tous les niveaux</option><option value="1">L1 · Junior</option><option value="2">L2 · Confirmé</option><option value="3">L3 · Senior</option><option value="4">L4 · Expert</option></select></div>
+      <button class="primary full" id="start">Démarrer la simulation</button>
+      <p class="error" id="startError" role="alert"></p>
+      <hr class="rule">
+      <div class="smalllabel">Dans ce prototype</div>
+      <p class="muted">Sélection locale de questions, saisie des réponses, relances prédéfinies et récapitulatif. La sélection réelle S2-04 utilise uniquement les questions approuvées dans Supabase.</p>
+    </aside>
+    <div class="card" aria-live="polite">
+      <div id="intro" class="empty"><div><div class="big">◎</div><h2>Votre espace de simulation</h2><p class="muted">Définissez vos préférences à gauche, puis lancez une session de démonstration.</p><span class="pill warn">Brouillons · aperçu uniquement</span></div></div>
+      <div id="interview" class="hidden">
+        <div class="gap" style="justify-content:space-between"><span class="pill mint">Simulation en cours</span><span class="smalllabel" id="progressLabel"></span></div>
+        <div class="progress"><span id="progressBar" style="width:0%"></span></div>
+        <div class="gap" style="margin-top:22px"><span class="pill" id="questionCode"></span><span class="pill warn">DRAFT</span><span class="smalllabel" id="questionMeta"></span></div>
+        <div class="prompt" id="questionText"></div>
+        <div class="tip"><b>Relance préparée</b><div id="followupText" style="margin-top:5px"></div><div class="smalllabel" style="margin-top:6px">Non générée par IA</div></div>
+        <div class="form-field"><label for="answer">Votre réponse (facultatif)</label><textarea id="answer" maxlength="8000" placeholder="Rédigez votre réponse comme en entretien..."></textarea></div>
+        <div class="gap" style="margin-top:16px;justify-content:flex-end"><button class="primary" id="next">Valider et continuer →</button></div>
+        <p class="error" id="answerError" role="alert"></p>
+      </div>
+      <div id="summary" class="hidden">
+        <span class="pill mint">Parcours terminé</span><h2 style="margin-top:17px">Récapitulatif de votre simulation</h2>
+        <p class="muted">Les réponses restent en mémoire locale pendant la session et ne sont pas évaluées ni envoyées à Supabase.</p>
+        <div id="answerList"></div>
+        <div class="gap" style="margin-top:18px"><span class="pill warn">Non noté · démonstration</span><button class="secondary" id="restart">Nouvelle simulation</button></div>
+      </div>
+    </div>
+  </section>
+  <section id="catalog" class="card hidden">
+    <h2>Explorateur du référentiel</h2><p class="muted">Vue développeur uniquement. Les critères d'évaluation restent hors de l'interface de simulation.</p>
+    <div class="catalog-toolbar">
+      <input id="search" type="search" placeholder="Rechercher par mot-clé ou code (ex. TECH-003)">
+      <select id="bankFamily"><option value="all">Toutes les familles</option><option value="rh">RH</option><option value="technical">Technique</option></select>
+      <select id="bankLanguage"><option value="fr">Français</option><option value="en">English</option></select>
+    </div>
+    <div class="smalllabel" id="bankCount"></div>
+    <div class="bank-list" id="bankList"></div>
+  </section>
+  <div class="foot">AI Interview Platform · Local development preview · les données réelles restent protégées dans Supabase</div>
+</div>
+<script>
+  const $=id=>document.getElementById(id);
+  const text=(id,value)=>$(id).textContent=value;
+  const el=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=String(value);return n;};
+  const state={questions:[],session:null,mode:"simulation"};
+  async function api(path,body){
+    const opts=body===undefined?{}:{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)};
+    const r=await fetch(path,opts);const data=await r.json();
+    if(!r.ok)throw Error(data.error||"Erreur de connexion locale");
+    return data;
+  }
+  function activate(mode){
+    state.mode=mode;
+    $("simulation").classList.toggle("hidden",mode!=="simulation");
+    $("catalog").classList.toggle("hidden",mode!=="catalog");
+    $("simulationTab").classList.toggle("on",mode==="simulation");
+    $("catalogTab").classList.toggle("on",mode==="catalog");
+    $("simulationTab").setAttribute("aria-selected",mode==="simulation");
+    $("catalogTab").setAttribute("aria-selected",mode==="catalog");
+    if(mode==="catalog")renderBank();
+  }
+  function updateCategories(){
+    const family=$("family").value;
+    const selected=$("category").value;
+    const opts=[...new Set(state.questions.filter(q=>q.family===family).map(q=>q.category))].sort();
+    $("category").replaceChildren();
+    const all=el("option",null,"Tous les domaines");all.value="";$("category").append(all);
+    for(const v of opts){const opt=el("option",null,v.replaceAll("_"," "));opt.value=v;$("category").append(opt);}
+    if(opts.includes(selected))$("category").value=selected;
+  }
+  function showQuestion(q,position,total){
+    $("intro").classList.add("hidden");$("summary").classList.add("hidden");
+    $("interview").classList.remove("hidden");
+    text("progressLabel",position+" / "+total);
+    $("progressBar").style.width=(100*(position-1)/total)+"%";
+    text("questionCode",q.code);
+    text("questionMeta","Niveau L"+q.difficulty+" · "+q.category.replaceAll("_"," "));
+    text("questionText",q.prompt);
+    text("followupText",q.followup||"Aucune relance");
+    $("answer").value="";$("answer").focus();
+    text("next",position===total?"Terminer la simulation":"Valider et continuer →");
+    text("answerError","");
+  }
+  async function start(){
+    text("startError","");
+    const payload={family:$("family").value,locale:$("language").value,count:Number($("count").value)};
+    if($("category").value)payload.category=$("category").value;
+    if($("difficulty").value)payload.difficulty=Number($("difficulty").value);
+    $("start").disabled=true;
+    try{
+      const result=await api("/api/session/start",payload);
+      state.session=result.session_id;
+      showQuestion(result.question,result.index,result.total);
+    }catch(err){text("startError",err.message);}finally{$("start").disabled=false;}
+  }
+  async function next(){
+    text("answerError","");$("next").disabled=true;
+    try{
+      const result=await api("/api/session/answer",{session_id:state.session,answer:$("answer").value});
+      if(result.completed){
+        $("interview").classList.add("hidden");$("summary").classList.remove("hidden");
+        const list=$("answerList");list.replaceChildren();
+        for(let i=0;i<result.answers.length;i++){
+          const a=result.answers[i];const row=el("div","review-row");
+          row.append(el("span","pill",a.code),el("h3",null,a.prompt),el("div","answer",a.answer||"Aucune réponse saisie"));
+          list.append(row);
+        }
+        state.session=null;
+      }else showQuestion(result.question,result.index,result.total);
+    }catch(err){text("answerError",err.message);}finally{$("next").disabled=false;}
+  }
+  function renderBank(){
+    const search=$("search").value.trim().toLowerCase();
+    const family=$("bankFamily").value;
+    const loc=$("bankLanguage").value;
+    const items=state.questions.filter(q=>(family==="all"||q.family===family)&&
+      (q.code.toLowerCase().includes(search)||(loc==="fr"?q.fr:q.en).toLowerCase().includes(search)));
+    text("bankCount",items.length+" question(s) trouvée(s) · brouillons en lecture seule");
+    const list=$("bankList");list.replaceChildren();
+    for(const q of items.slice(0,100)){
+      const row=el("div","bank-card"),head=el("div","gap");
+      head.append(el("span","pill",q.code),el("span","pill warn","DRAFT"),
+        el("span","smalllabel",(q.family==="rh"?"RH":"Technique")+" · L"+q.difficulty+" · "+q.category));
+      row.append(head,el("p",null,loc==="fr"?q.fr:q.en));list.append(row);
+    }
+    if(items.length>100)list.append(el("p","muted","100 premiers résultats affichés. Affinez votre recherche."));
+  }
+  async function init(){
+    try{
+      const [stats,bank]=await Promise.all([api("/api/stats"),api("/api/questions")]);
+      state.questions=bank.items.map(q=>({
+        ...q,fr:q.prompt,en:""
+      }));
+      const english=await api("/api/questions?locale=en");
+      const byCode=new Map(english.items.map(q=>[q.code,q.prompt]));
+      for(const q of state.questions)q.en=byCode.get(q.code)||q.fr;
+      text("total",stats.questions);text("rhcount",stats.families.rh);
+      text("techcount",stats.families.technical);text("translations",stats.localizations);
+      updateCategories();
+    }catch(err){text("startError","Impossible de charger le corpus local : "+err.message);}
+  }
+  $("simulationTab").onclick=()=>activate("simulation");
+  $("catalogTab").onclick=()=>activate("catalog");
+  $("family").onchange=updateCategories;
+  $("start").onclick=start;
+  $("next").onclick=next;
+  $("restart").onclick=()=>{$("summary").classList.add("hidden");$("intro").classList.remove("hidden");};
+  for(const id of ["search","bankFamily","bankLanguage"])$(id).addEventListener(id==="search"?"input":"change",renderBank);
+  init();
+</script>
+</body>
+</html>

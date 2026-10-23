@@ -6,7 +6,7 @@ Ce dépôt est la source des documents produits et du corpus pilote. **ClickUp e
 1. Lire `README.md`, `docs/DECISIONS.md`, `docs/SECURITY.md` et `docs/CONTRIBUTING.md`.
 2. Pour S2-03, lire `docs/S2-03_Question_Bank_Specification.md`, `docs/S2-03_Implementation_Tracker.md` et `docs/S2-03_120_Questions_Status.md`.
 3. Identifier le ticket ClickUp, inspecter le code/document existant, puis vérifier l'état réel avant toute affirmation.
-4. Ne pas supposer que Next.js, Supabase, fournisseurs IA ou migrations sont déjà retenus et déployés ; le dépôt décrit actuellement un POC documentaire.
+4. Supabase PostgreSQL et une Edge Function sont déjà déployés pour S2-03 ; une interface locale de test E2E S2-01 est également disponible. La stack frontend finale, le moteur conversationnel et les fournisseurs avatar/voix restent ouverts.
 
 ## Invariants produit
 - Simulation d'entretien et coaching, **pas** recrutement automatisé ni décision d'embauche.
@@ -21,8 +21,9 @@ Ce dépôt est la source des documents produits et du corpus pilote. **ClickUp e
 - 50 questions RH + 70 techniques dans cinq fichiers JSON ; 120/120 en `draft`.
 - 10 RH ont une revue éditoriale approuvée, 10 techniques un pré-audit IA, 100 expansions IA sans validation humaine.
 - Les relances des expansions sont génériques. Les attendus sont surtout en français, et l'exactitude métier doit être relue.
-- Aucun import Supabase, aucune publication ni intégration effective du moteur.
-- Script de structure : `python scripts/validate_question_bank.py`; CI GitHub dédiée au corpus.
+- Les 120 questions ont été importées dans le schéma Supabase privé `question_bank`, sans publication ; l'Edge Function protégée et les sessions versionnées sont opérationnelles au niveau prototype. Un moteur conversationnel IA complet n'est pas livré.
+- Onboarding S2-01 : migration `0007_candidate_onboarding_profiles.sql` appliquée, profils propriétaires protégés en RLS ; UI lab `/e2e` avec scénarios Chromium. Tests Supabase Auth en navigateur simulés, vraie inscription manuelle à réaliser.
+- Script de structure : `python scripts/validate_question_bank.py`; CI Python/Node/Deno/PostgreSQL/Chromium.
 
 ## Qualité & livraison
 - Privilégier des fichiers ciblés et des commits traçables ; ne pas modifier des données déjà validées sans noter le changement.

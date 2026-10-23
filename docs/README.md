@@ -17,7 +17,7 @@ Cette page sert de **point d'entrée** pour les contributeurs, les développeurs
 | Domaine | Documents principaux | État |
 |---|---|---|
 | Sprint 1 | Architecture, modèle de données, ADR | Proposition partielle, choix techniques ouverts |
-| S2-01 — Onboarding | Documentation produit ClickUp ; guide agent pour les invariants | Conception fonctionnelle annoncée terminée ; implémentation non vérifiée |
+| S2-01 — Onboarding | [Parcours E2E nouveau candidat](NEW_USER_E2E.md), migration de profil RLS et test Chromium | Interface et parcours démo validés ; vrai compte Supabase à tester manuellement |
 | S2-03 — Banques de questions | [Spécification](S2-03_Question_Bank_Specification.md), [suivi](S2-03_Implementation_Tracker.md), [état du corpus](S2-03_120_Questions_Status.md) | 120 questions brouillon, validation finale en attente |
 | S2-03 — Qualité | [Revue RH](S2-03_Revue_RH_Cloture.md), [audit technique](S2-03_Audit_Technique.md), [calibration](S2-03_Calibration_Grilles_Pilote.md) | Revue RH pilote et audit IA ; moteur non testé |
 | Revue du dépôt | [Audit du 22 octobre](AUDIT_GITHUB_2026-10-22.md) | Audit documentaire, pas audit applicatif complet |

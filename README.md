@@ -1,6 +1,6 @@
 # AI Interview Platform
 
-Plateforme d'entraînement aux entretiens d'embauche assistée par l'IA. **Statut : POC en développement, Sprint 2 — banque S2-03 déployée et raccordement serveur S2-04 testé.** Base Supabase dédiée, service protégé par JWT et moteur de sessions minimal disponibles. L'interface candidat, les relances IA conversationnelles et la notation ne sont pas encore livrées.
+Plateforme d'entraînement aux entretiens d'embauche assistée par l'IA. **Statut : POC en développement, Sprint 2 — banque S2-03 déployée et raccordement serveur S2-04 testé.** Base Supabase dédiée, service protégé par JWT et moteur de sessions minimal disponibles. Le parcours candidat et une **simulation IA locale avec relances générées par modèle** sont testables sur localhost ; la notation, le moteur IA de production et l'interface finale ne sont pas encore livrés.
 
 ## Démarrage rapide pour contributeurs
 
@@ -14,6 +14,42 @@ Plateforme d'entraînement aux entretiens d'embauche assistée par l'IA. **Statu
 4. Utiliser le [modèle de PR](.github/PULL_REQUEST_TEMPLATE.md), noter les tests réalisés et ne mettre le statut ClickUp à jour qu'après preuve de livraison.
 
 Documentation du changement : [CHANGELOG](CHANGELOG.md) · [Modèle ADR](docs/ADR_TEMPLATE.md) · [Checklist de release](docs/RELEASE_CHECKLIST.md).
+
+## Test E2E : nouveau candidat (S2-01 → S2-04)
+
+```bash
+python3 dev/local-preview/server.py
+```
+
+Ouvrir **http://127.0.0.1:8765/e2e** pour suivre le parcours inscription → onboarding → profil → configuration RH/technique → entretien guidé ou IA → récapitulatif. Le mode démo est intégralement local ; une connexion facultative à Supabase Auth permet de tester l'enregistrement réel du profil (mais pas encore une simulation IA, puisque les 120 questions restent en brouillon). Voir [guide E2E](docs/NEW_USER_E2E.md) et [démarrage IA locale](docs/S2-04_AI_LOCAL_SIMULATION.md).
+
+### Simulation IA avec Groq
+
+Si vous disposez d'une clé Groq, le simulateur sait maintenant utiliser Groq directement :
+
+\`\`\`bash
+git pull origin main
+read -s "GROQ_API_KEY?Clé Groq : "
+echo
+export GROQ_API_KEY
+export AI_PROVIDER=groq
+python3 dev/local-preview/server.py
+\`\`\`
+
+Ouvrir <http://127.0.0.1:8765/e2e>. Le parcours offre des relances IA et un bilan qualitatif avec \`openai/gpt-oss-120b\` après consentement. Le modèle ancien a été retiré pour les comptes Free/Developer en août 2026. La clé reste sur le serveur local et les 120 questions demeurent en brouillon dans Supabase. [Guide Groq / OpenAI](docs/S2-04_AI_LOCAL_SIMULATION.md).
+
+
+## Tester en local sur Mac
+
+Un **aperçu fonctionnel du corpus S2-03 et du parcours de questions S2-04** est disponible sans dépendances externes :
+
+```bash
+python3 dev/local-preview/server.py
+```
+
+Ouvrir **http://127.0.0.1:8765**. L'outil permet d'explorer les 120 questions RH/techniques en FR/EN et de réaliser une simulation guidée avec récapitulatif. Il fonctionne exclusivement en mémoire locale : **aucune connexion Supabase, notation IA, authentification ou publication de brouillons**.
+
+[Guide Mac et explication des schémas Supabase](docs/LOCAL_PREVIEW.md) · [Tests localhost](tests/test_local_preview.py).
 
 ## Vision produit
 
@@ -40,7 +76,7 @@ Le candidat crée son compte et renseigne son profil (expérience, poste visé, 
 | Fournisseur avatar / voix / transcription | Non validé, POC prioritaire |
 | Corpus S2-03 | 120 questions FR/EN importées en Supabase, toutes en brouillon ; sécurité/versioning et handoff S2-04 implémentés, revue métier en attente |
 | Calibration S2-03 | 12 cas simulés documentés ; moteur de notation non testé |
-| Implémentation applicative | Edge Function question-bank v4 active ; API S2-03 et orchestrateur de session S2-04 minimal ; aucune application candidat complète ni scoring |
+| Implémentation applicative | API S2-03 et sessions S2-04, laboratoire E2E avec **relance IA locale optionnelle et objectifs RH/tech spécialisés** ; scoring et production non livrés |
 
 La fusion de la PR #2 intègre une proposition d'architecture ; elle ne valide pas les choix de stack, de fournisseurs, d'hébergement ou de conformité.
 

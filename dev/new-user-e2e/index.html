@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07132b">
+<title>AI Interview Platform — Test E2E nouvel utilisateur</title>
+<style>
+:root{color-scheme:dark;--bg:#071024;--surface:#101e3b;--surface2:#152849;--border:#34496888;--ink:#f2f6ff;--muted:#a0aecb;--accent:#7ccaff;--mint:#84e6c4;--yellow:#f4d98c}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 65% 0%,#22467e55,transparent 42%),radial-gradient(circle at 0% 85%,#12326366,transparent 45%),var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+button,select,input,textarea{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.shell{max-width:1040px;margin:0 auto;padding:25px 26px 72px}header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.logo{display:flex;gap:13px;align-items:center}.logo-mark{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#4085c5,#7ccaff22);font-weight:800;font-size:21px;border:1px solid #7ccaff66}
+.logo b{display:block;letter-spacing:.055em}.logo small{display:block;color:var(--muted);font-size:12px}
+.status{font-size:12px;color:var(--mint);background:#84e6c40b;border:1px solid #84e6c444;border-radius:100px;padding:8px 13px}
+.steps{display:flex;justify-content:space-between;gap:6px;margin:25px 0 35px;flex-wrap:wrap}.step{display:flex;align-items:center;gap:7px;color:#7891bc;font-size:12px;font-weight:650}.step span{width:25px;height:25px;border-radius:50%;display:grid;place-items:center;border:1px solid #455875;background:#101d35}.step.active{color:#dcf0ff}.step.active span{border-color:#7ccaff;background:#235383}.step.done{color:var(--mint)}.step.done span{border-color:#4a9c87;background:#174940}
+.kicker{color:var(--accent);font-weight:800;font-size:12px;letter-spacing:.16em;text-transform:uppercase}
+h1{font-size:clamp(30px,5vw,54px);letter-spacing:-.046em;line-height:1.13;margin:13px 0 16px}h2{font-size:26px;letter-spacing:-.025em;line-height:1.25;margin:0 0 10px}h3{font-size:16px;margin:0 0 4px}
+p{color:var(--muted);margin:0 0 17px}.lead{font-size:17px;max-width:720px}
+.card{padding:25px;background:linear-gradient(145deg,rgba(25,44,81,.95),rgba(11,25,52,.96));border:1px solid var(--border);border-radius:22px;box-shadow:0 18px 50px #0003}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.two-col{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px;align-items:start}.flow{display:flex;gap:11px;align-items:center;flex-wrap:wrap}
+.choice{position:relative;text-align:left;display:block;width:100%;background:#122447;border:1px solid #425e8290;border-radius:16px;padding:18px;color:var(--ink);min-height:100px}.choice.selected,.choice:has(input:checked){border-color:#77c9ff;background:linear-gradient(160deg,#244a76,#152d4f);box-shadow:0 0 0 1px #77c9ff33}.choice b{display:block;margin-bottom:3px;font-size:15px}.choice small{display:block;color:#b1c2e0}.choice input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+.field{margin:16px 0}.field label{display:block;font-size:13px;font-weight:700;color:#d6e5fa;margin-bottom:7px}input:not([type=checkbox]),select,textarea{width:100%;padding:13px 14px;background:#091a36;border:1px solid #476185c0;color:var(--ink);border-radius:11px;min-height:47px}input::placeholder,textarea::placeholder{color:#7790b6}textarea{min-height:140px;resize:vertical}
+.primary{background:linear-gradient(115deg,#69bafa,#87d5fe);color:#09203c;border:none;border-radius:12px;padding:13px 20px;font-weight:800;min-height:47px}.secondary{background:#213a5e;color:#e4f3ff;border:1px solid #50739c;border-radius:12px;padding:12px 18px;font-weight:700}.ghost{background:transparent;border:1px solid #486282;color:#bcd4ef;padding:11px 16px;border-radius:12px}.primary:disabled{opacity:.45;cursor:not-allowed}
+.alert{background:#64471a2a;border:1px solid #dba85455;color:#f6dc9e;border-radius:14px;padding:14px 16px;font-size:13px;margin:20px 0}.alert.success{color:#a6f0db;border-color:#4ca98b77;background:#154a3a30}
+.tag{display:inline-flex;font-size:11px;font-weight:800;letter-spacing:.07em;padding:5px 9px;border-radius:50px;border:1px solid #6193c2;color:#a5d9ff;background:#193d646b}.tag.warn{color:var(--yellow);border-color:#936e35;background:#4f391b33}
+.gap{height:20px}.muted{font-size:13px;color:var(--muted)}.item{padding:15px 0;border-bottom:1px solid var(--border)}.item:last-child{border-bottom:0}.item h3{margin:7px 0}.item p{white-space:pre-wrap;font-size:14px;margin:0}
+.summary-stat{font-size:27px;font-weight:800;letter-spacing:-.04em}.progress{height:8px;background:#314668;border-radius:30px;overflow:hidden;margin:14px 0}.progress span{display:block;height:100%;background:linear-gradient(90deg,#60b4f5,#6be6c6)}
+.error{font-size:13px;color:#ffb6b6;min-height:22px;margin-top:10px}.hidden{display:none!important}.inline-check{display:flex;align-items:center;gap:8px;color:#c9dafa;font-size:13px}.inline-check input{width:17px;height:17px;accent-color:#7bcfff}
+footer{margin-top:45px;color:#8198b6;font-size:12px;text-align:center}a{color:#9cd7ff}
+@media(max-width:800px){.shell{padding:17px 14px 55px}.grid,.three,.two-col{grid-template-columns:1fr}.steps{gap:12px}.step{font-size:11px}.card{padding:19px}header{align-items:flex-start}.status{white-space:nowrap}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <div class="logo"><div class="logo-mark">AI</div><div><b>INTERVIEW PLATFORM</b><small>Parcours nouvel utilisateur · E2E Lab</small></div></div>
+  <div class="status" id="modeIndicator">MODE DÉMO · LOCAL</div>
+</header>
+<nav class="steps" aria-label="Étapes du parcours">
+  <div class="step active" data-step="welcome"><span>1</span>Accueil</div>
+  <div class="step" data-step="auth"><span>2</span>Compte</div>
+  <div class="step" data-step="onboarding"><span>3</span>Onboarding</div>
+  <div class="step" data-step="dashboard"><span>4</span>Profil</div>
+  <div class="step" data-step="configure"><span>5</span>Simulation</div>
+  <div class="step" data-step="interview"><span>6</span>Entretien</div>
+  <div class="step" data-step="recap"><span>7</span>Récapitulatif</div>
+</nav>
+<main>
+<section id="welcome">
+  <div class="kicker">E2E LAB · S2-01 / S2-03 / S2-04</div>
+  <h1>Bienvenue dans votre<br>préparation aux entretiens.</h1>
+  <p class="lead">Suivez le parcours d'un nouvel utilisateur : création du compte, profil, objectifs, préparation et première simulation.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="tag">PARCOURS NAVIGATEUR</div><h2 style="margin-top:15px">Démo guidée</h2>
+      <p>Un parcours complet avec questions de démonstration, sans compte Supabase. Les brouillons restent non publiés et les réponses ne sont pas notées.</p>
+      <button class="primary" id="chooseDemo">Tester le parcours complet →</button>
+    </div>
+    <div class="card">
+      <div class="tag">AUTHENTIFICATION RÉELLE</div><h2 style="margin-top:15px">Supabase Auth</h2>
+      <p>Créez un vrai compte et enregistrez vos objectifs dans votre profil privé. La simulation en production reste indisponible tant qu'aucune question n'est approuvée.</p>
+      <button class="secondary" id="chooseLive" disabled>Activer le parcours réel</button>
+      <div class="muted" id="liveAvailability" style="margin-top:10px">Nécessite la configuration publique de Supabase en localhost.</div>
+    </div>
+  </div>
+  <div class="alert"><b>Périmètre de ce test :</b> l'onboarding et les préférences peuvent être vérifiés de bout en bout. Les relances IA, la notation et le moteur conversationnel complet ne sont pas encore disponibles.</div>
+</section>
+
+<section id="auth" class="hidden">
+  <div class="kicker">Étape 1 · Votre compte</div><h1 id="authHeading">Créer mon compte</h1>
+  <p id="authSub">Ce compte est fictif et temporaire en mode démo.</p>
+  <div class="card" style="max-width:520px">
+    <form id="authForm">
+      <div class="field"><label for="email">Adresse e-mail</label><input id="email" name="email" type="email" autocomplete="email" required placeholder="nom@exemple.com"></div>
+      <div class="field"><label for="password">Mot de passe</label><input id="password" name="password" type="password" minlength="8" autocomplete="new-password" required placeholder="Au moins 8 caractères"></div>
+      <div class="flow"><button class="primary" id="authSubmit" type="submit">Créer mon compte →</button><button class="ghost" id="toggleAuth" type="button">Déjà inscrit ? Se connecter</button></div>
+      <div class="error" id="authError" role="alert"></div>
+    </form>
+    <div class="alert hidden" id="emailPending">Vérifiez votre boîte e-mail puis revenez vous connecter. La confirmation de l'adresse peut être requise par Supabase.</div>
+  </div>
+</section>
+
+<section id="onboarding" class="hidden">
+  <div class="kicker">Étape 2 · Votre profil</div><h1>Apprenons à vous connaître.</h1>
+  <p class="lead">Quelques choix pour adapter vos entraînements. Aucun CV ni fiche de poste n'est demandé ici.</p>
+  <form id="onboardingForm" class="card">
+    <h2>Quel est votre objectif professionnel principal ?</h2>
+    <div class="grid three" id="professionalOptions">
+      <label class="choice" data-goal="first_job"><input type="radio" name="professionalGoal" value="first_job" required><b>Premier emploi</b><small>Préparer ma première expérience professionnelle.</small></label>
+      <label class="choice" data-goal="job_change"><input type="radio" name="professionalGoal" value="job_change"><b>Changer de poste</b><small>Réussir une nouvelle étape de carrière.</small></label>
+      <label class="choice" data-goal="career_growth"><input type="radio" name="professionalGoal" value="career_growth"><b>Évoluer</b><small>Accéder à davantage de responsabilités.</small></label>
+    </div>
+    <div class="gap"></div><h2>Sur quoi souhaitez-vous progresser ?</h2>
+    <p>Sélectionnez une ou plusieurs priorités. Elles deviendront vos préférences par défaut.</p>
+    <div class="grid" id="preparationOptions">
+      <label class="choice"><input type="checkbox" value="confidence"><b>Confiance en soi</b><small>Prendre la parole avec assurance.</small></label>
+      <label class="choice"><input type="checkbox" value="answer_structure"><b>Structurer mes réponses</b><small>Être clair, précis et convaincant.</small></label>
+      <label class="choice"><input type="checkbox" value="communication"><b>Communication</b><small>Améliorer la qualité de mes échanges.</small></label>
+      <label class="choice"><input type="checkbox" value="domain_knowledge"><b>Connaissances métier</b><small>Renforcer ma maîtrise du poste.</small></label>
+      <label class="choice"><input type="checkbox" value="stress_management"><b>Gestion du stress</b><small>Rester serein lors des questions difficiles.</small></label>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="field"><label for="targetRole">Métier ciblé (facultatif)</label><input id="targetRole" maxlength="120" placeholder="Ex. Data Analyst, Product Owner..."></div>
+      <div class="field"><label for="preferredLocale">Langue de préparation</label><select id="preferredLocale"><option value="fr">Français</option><option value="en">English</option></select></div>
+    </div>
+    <div class="flow"><button type="submit" class="primary" id="saveProfile">Enregistrer mon profil →</button><span class="muted">Pas d'import de CV ni de diagnostic initial.</span></div>
+    <div class="error" id="onboardingError" role="alert"></div>
+  </form>
+</section>
+
+<section id="dashboard" class="hidden">
+  <div class="kicker">Étape 3 · Profil créé</div><h1>Votre espace de préparation.</h1>
+  <p class="lead">Vos préférences guident les prochaines simulations. Vous pourrez les adapter à chaque session sans les modifier définitivement.</p>
+  <div class="grid">
+    <div class="card">
+      <div class="tag" id="profileMode">PROFIL LOCAL</div><h2 style="margin-top:15px">Votre profil</h2>
+      <div class="item"><span class="muted">Compte</span><h3 id="profileEmail"></h3></div>
+      <div class="item"><span class="muted">Objectif professionnel</span><h3 id="profileGoal"></h3></div>
+      <div class="item"><span class="muted">Priorités enregistrées</span><h3 id="profilePrep"></h3></div>
+      <div class="item"><span class="muted">Poste ciblé</span><h3 id="profileRole"></h3></div>
+      <div class="flow" style="margin-top:17px"><button class="secondary" id="editProfile">Modifier mes préférences</button><button class="ghost" id="signOut">Déconnexion</button></div>
+    </div>
+    <div class="card">
+      <div class="tag">VOTRE PROCHAINE ÉTAPE</div><h2 style="margin-top:15px">Préparer une simulation</h2>
+      <p>Choisissez un type d'entretien, votre niveau et les compétences à travailler. Vous pouvez aussi ajouter une fiche de poste maintenant, sans modifier votre profil général.</p>
+      <button class="primary" id="goConfigure">Configurer mon entretien →</button>
+      <div class="alert" id="dashboardNotice" style="margin-bottom:0"></div>
+    </div>
+  </div>
+</section>
+
+<section id="configure" class="hidden">
+  <div class="kicker">Étape 4 · Préparation de l'entretien</div><h1>Personnalisez votre simulation.</h1>
+  <p class="lead">Les changements ci-dessous s'appliquent à cette simulation uniquement.</p>
+  <form id="configurationForm" class="card">
+    <div class="grid">
+      <div class="field"><label for="simFamily">Type d'entretien</label><select id="simFamily"><option value="rh">Entretien RH</option><option value="technical">Entretien technique</option></select></div>
+      <div class="field"><label for="simDifficulty">Niveau</label><select id="simDifficulty"><option value="">Adapté automatiquement</option><option value="1">L1 — Débutant</option><option value="2">L2 — Confirmé</option><option value="3">L3 — Senior</option></select></div>
+      <div class="field hidden" id="simDomainWrap"><label for="simDomain">Spécialité technique</label>
+        <select id="simDomain">
+          <option value="software">Software Engineering</option>
+          <option value="data_ai">Data & IA</option>
+          <option value="cloud_devops">Cloud & DevOps</option>
+          <option value="cybersecurity">Cybersécurité</option>
+          <option value="testing_qa">Testing & QA</option>
+          <option value="business_analysis">Business Analysis</option>
+        </select>
+      </div>
+      <div class="field"><label for="simMode">Type de simulation</label><select id="simMode">
+        <option value="guided">Démonstration guidée (sans IA)</option>
+        <option value="ai" disabled>Entretien avec relances IA (clé API nécessaire)</option>
+      </select></div>
+    </div>
+    <h2 id="simGoalsTitle">Objectifs de préparation RH</h2>
+    <p class="muted" id="simGoalsHint">Choisissez les compétences RH à travailler pour cet entretien.</p>
+    <div class="grid" id="simulationGoals"></div>
+    <div class="muted" id="aiModeHint" style="margin-top:12px">Les questions brouillon sont disponibles uniquement dans ce laboratoire local.</div>
+    <div class="field"><label for="simJobDescription">Fiche de poste (facultatif, uniquement à cette étape)</label><textarea id="simJobDescription" maxlength="3000" placeholder="Collez la description du poste ciblé..."></textarea><div class="muted">Cette description n'est pas enregistrée dans le profil.</div></div>
+    <div class="field"><label for="simCount">Nombre de questions</label><select id="simCount"><option value="3">3 questions — test rapide</option><option value="5">5 questions</option></select></div>
+    <div id="aiPrivacyWrap" class="alert hidden">
+      <label class="inline-check"><input type="checkbox" id="aiPrivacyConsent">
+        J'accepte que mes réponses de test soient transmises au fournisseur IA pour générer des relances et un bilan qualitatif.
+      </label>
+      <div class="muted" style="margin-top:6px">Ne renseignez aucune donnée personnelle sensible. Le mode IA est uniquement local et n'écrit rien dans Supabase.</div>
+    </div>
+    <div class="flow"><button class="primary" type="submit" id="launchInterview">Démarrer mon entretien →</button><button class="ghost" type="button" id="backDashboard">Retour au profil</button></div>
+    <div class="error" id="configurationError" role="alert"></div>
+  </form>
+</section>
+
+<section id="interview" class="hidden">
+  <div class="kicker">Étape 5 · Simulation en cours</div><h1>À vous de jouer.</h1>
+  <div class="card" aria-live="polite">
+    <div class="flow" style="justify-content:space-between"><span class="tag warn" id="interviewStatus">DÉMO SANS SCORING IA</span><b id="interviewProgress"></b></div>
+    <div class="progress"><span id="interviewProgressBar" style="width:0%"></span></div>
+    <div class="flow" style="margin-top:25px"><span class="tag" id="interviewCode"></span><span class="muted" id="interviewLevel"></span></div>
+    <h2 id="interviewPrompt" style="margin-top:18px;max-width:850px;font-size:28px"></h2>
+    <div class="alert" id="interviewFollowup"></div>
+    <div class="field"><label for="interviewAnswer">Votre réponse</label><textarea id="interviewAnswer" placeholder="Rédigez votre réponse, puis passez à la question suivante..."></textarea></div>
+    <div class="flow"><button class="primary" id="submitAnswer">Valider ma réponse et continuer →</button><button class="ghost" id="stopInterview">Quitter la simulation</button></div>
+    <div class="error" id="interviewError" role="alert"></div>
+  </div>
+</section>
+
+<section id="recap" class="hidden">
+  <div class="kicker">Étape 6 · Récapitulatif</div><h1>Première simulation terminée.</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="tag">APERÇU SANS ÉVALUATION</div><div class="summary-stat" id="recapCount" style="margin-top:15px"></div>
+      <p>Vos réponses ont été parcourues. Le scoring et le feedback IA n'ont pas encore été implémentés.</p>
+      <div class="item"><span class="muted">Objectifs enregistrés dans votre profil</span><h3 id="recapPersistentGoals"></h3></div>
+      <div class="item"><span class="muted">Objectifs utilisés pour cette simulation</span><h3 id="recapSimulationGoals"></h3></div>
+      <div class="alert success hidden" id="aiRecapFeedback" style="white-space:pre-wrap"></div>
+      <div class="flow" style="margin-top:20px"><button class="primary" id="retrySimulation">Nouvelle simulation</button><button class="secondary" id="returnDashboard">Mon tableau de bord</button></div>
+    </div>
+    <div class="card"><h2>Questions et réponses</h2><div id="recapAnswers"></div></div>
+  </div>
+</section>
+</main>
+<footer>AI Interview Platform · E2E Test Lab · Les critères de notation et les 120 brouillons ne sont jamais publiés au candidat.</footer>
+</div>
+<script type="module" src="/e2e/app.js"></script>
+</body></html>

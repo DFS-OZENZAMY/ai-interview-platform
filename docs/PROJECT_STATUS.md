@@ -8,17 +8,17 @@
 |---|---|---|
 | Gestion de dépôt | Documentation, templates et CI du corpus présents | Confirmer exécution des workflows et gouvernance future |
 | S1-01/S1-02 | Fondations documentaires et architecture conceptuelle disponibles | Choix de stack, sécurité, données et POC technique |
-| S2-01 | Invariants produit formalisés dans les décisions / guide agent | Intégration et test du parcours non vérifiés |
+| S2-01 | UI localhost pour création du compte, onboarding, préférences persistantes et parcours démo ; migration Supabase `candidate_profiles` avec RLS ; E2E Chromium réussi | Test d'inscription réel avec e-mail confirmé et intégration de l'interface définitive |
 | S2-03 | Projet Supabase Paris actif, 120 questions `draft`, versioning, sécurité RLS, API Auth, snapshots immuables et raccordement technique S2-04 développés | Revue humaine du corpus et recette HTTP multirôle / parcours conversationnel complet |
 | Calibration S2-03 | 12 cas synthétiques étudiés sur grilles provisoires | Valider ancrages/limites ; rejouer avec moteur réel au Sprint 3 |
 | S2-04 et suites | Contrats et travaux prévus | Développement et tests d'intégration non démontrés |
 
 ## Ce qui ne doit PAS être présenté comme réalisé
 
-- Une application utilisable en production, un environnement Supabase ou une intégration moteur effective.
+- Une application utilisable en production ou un entretien conversationnel IA complet. Supabase est bien déployé pour S2-03 et le profil S2-01, mais la simulation réelle reste bloquée sans question publiée.
 - Une validation humaine du corpus complet ou la publication des questions.
 - Une règle de branche qui bloque effectivement les merges ; l'état des protections reste à vérifier.
-- Une CI verte : l'existence du workflow ne prouve pas qu'un run a réussi.
+- Une validation HTTP Auth avec un vrai utilisateur : les tests Chromium actuels interceptent Supabase Auth/REST en mode simulé, et la recette manuelle reste à réaliser.
 
 ## Priorités avant développement
 
@@ -43,3 +43,17 @@ La PR #39 a été fusionnée dans `main` après contrôles Python et PostgreSQL 
 Le projet Supabase `ai-interview-platform` est dédié à cette application. Les migrations 0001–0006 sont appliquées, l'Edge Function `question-bank` version 4 est active avec `verify_jwt=true`, les 120 questions restent `draft`. L'orchestrateur S2-04 **minimal** sait démarrer une session, sélectionner une question approuvée (ou refuser de démarrer), persister/rejouer un snapshot et clore une session. La validation du moteur conversationnel IA complet appartient à S2-04, pas au contrat de banque.
 
 Les tests réels SQL (transactions annulées) et CI ont réussi. **Aucun utilisateur Supabase Auth ni question publiée : la recette HTTP positive avec JWT et la validation métier restent des critères ouverts.** Consulter [le bilan de clôture technique](S2-03_Technical_Closure_2026-10-22.md) et [le suivi d'implémentation](S2-03_Implementation_Tracker.md) avant de cocher les cases ClickUp.
+
+
+## Test E2E nouvel utilisateur — 22/10/2026
+
+La PR #45 fournit un test navigateur Chromium : compte démo → onboarding → profil → simulation configurée → réponses → récapitulatif → contrôle que les préférences enregistrées restent inchangées. Elle ajoute le mode de connexion **facultatif** Supabase Auth et la table propriétaire `public.candidate_profiles` sécurisée par trois politiques RLS. Les tests navigateur réussissent ; aucun vrai utilisateur n'a été inscrit automatiquement.
+
+**Point de départ :** [guide E2E](NEW_USER_E2E.md). Les 120 questions de `question_bank` restent non publiées, interdisant une vraie session IA ; le parcours complet visible reste un laboratoire local de démonstration.
+
+
+## Itération S2-04 — IA locale et préparation spécialisée (PR #46)
+
+Le laboratoire `/e2e` peut désormais proposer des **objectifs RH** ou **techniques** différents, ces derniers dépendant du domaine (Software, Data/IA, Cloud/DevOps, Cyber, QA, Business Analysis). Une simulation IA côté Python local peut générer une relance à partir d'une réponse et un bilan de coaching prudent via OpenAI Responses API lorsque `OPENAI_API_KEY` est configurée. Le navigateur doit demander un consentement d'envoi avant de transmettre les réponses au fournisseur.
+
+Le mode local de test rend les 120 brouillons disponibles **uniquement en prévisualisation de développement**. **Aucune publication officielle des 120 questions n'a été réalisée dans Supabase.** Les tests CI du modèle reposent sur un faux fournisseur ; aucune réponse IA facturée n'a été testée sans clé API. Voir [guide technique](S2-04_AI_LOCAL_SIMULATION.md).
