@@ -60,11 +60,11 @@ export default function InterviewPage(){
  const introTransitionTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
  const introFinished=useRef(false);
  const introLine=config?.locale==="en"
-  ?"I hope you're ready! Your interview will begin in five seconds. Good luck!"
-  :"J’espère que vous êtes prêt ! Votre entretien commencera dans cinq secondes. Bonne chance !";
+  ?"Hi, I'm Lina, I'll be your interviewer. I hope you're ready! Your interview will begin in five seconds. Good luck!"
+  :"Bonjour, je suis Lina, votre intervieweuse. J’espère que vous êtes prêt ! Votre entretien commencera dans cinq secondes. Bonne chance !";
  const introPhrases=config?.locale==="en"
-  ?["I hope you’re ready.","Your interview will begin in five seconds.","Good luck!"]
-  :["J’espère que vous êtes prêt !","Votre entretien commencera dans cinq secondes.","Bonne chance !"];
+  ?["Hi, I’m Lina, I’ll be your interviewer.","I hope you’re ready.","Your interview will begin in five seconds.","Good luck!"]
+  :["Bonjour, je suis Lina, votre intervieweuse.","J’espère que vous êtes prêt !","Votre entretien commencera dans cinq secondes.","Bonne chance !"];
  const recognition=useRef<Recognizer|null>(null);
  const questionAudio=useRef<HTMLAudioElement|null>(null);
  const questionAudioUrl=useRef<string|null>(null);
@@ -356,7 +356,7 @@ export default function InterviewPage(){
     <button type="button" onClick={playIntro} className="intro-v2-glass inline-flex min-h-12 items-center gap-2 rounded-2xl px-6 py-3 text-sm font-semibold text-white"><Volume2 size={17}/> Écouter le message</button>
     {introNotice&&<button type="button" onClick={finishIntroduction} className="intro-v2-primary inline-flex min-h-11 items-center rounded-2xl px-5 py-2 text-xs font-bold text-white">Continuer sans audio</button>}
    </div>}
-   <p className="mt-8 max-w-sm text-[10px] font-semibold leading-5 tracking-[.16em] text-[#B5C3E8] sm:text-xs">{introStage==="welcome"||introStage==="breathing"?"UN INSTANT POUR VOUS METTRE À L’AISE":"L’INTERVIEWEUR PREND LA PAROLE DANS QUELQUES SECONDES"}</p>
+   <p className="mt-8 max-w-sm text-[10px] font-semibold leading-5 tracking-[.16em] text-[#B5C3E8] sm:text-xs">{introStage==="welcome"||introStage==="breathing"?"UN INSTANT POUR VOUS METTRE À L’AISE":"LINA PREND LA PAROLE DANS QUELQUES SECONDES"}</p>
   </div>
  </main>;
  if(analyzingFinal && state==="thinking")return <InterviewAnalysisLoader />;
@@ -366,8 +366,8 @@ export default function InterviewPage(){
    <div className="mt-9 flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.14em] text-[#BCA7FF]">Simulation {config?.family==="technical"?"technique":"RH"}</p><h1 className="mt-2 text-3xl font-bold tracking-tight">Votre entretien IA</h1><p className="mt-2 text-sm text-[#B9C7E8]">{config?.jobTitle||(configChecked?"Configuration manquante":"Chargement de la configuration…")}</p></div><span className="text-sm font-semibold tabular-nums text-[#CBD3FF]">{Math.floor(elapsed/60).toString().padStart(2,"0")}:{(elapsed%60).toString().padStart(2,"0")}</span></div>
    <section className="interview-v2-stage mt-7 rounded-[32px] p-5 sm:p-10">
     <div className="mx-auto flex max-w-2xl flex-col items-center text-center">
-     <div className="interview-v2-orb relative size-52 sm:size-64"><VoicePoweredOrb state={state} voiceLevel={dictating ? .55 : 0} className="h-full w-full"/><span className="sr-only">{state==="speaking"?"L’intervieweur parle":dictating?"Microphone actif":state==="listening"?"À vous de répondre":"Orbe d’entretien"}</span></div>
-     <p className="mt-5 text-sm font-bold text-[#BCA7FF]">{({ready:"Prêt à commencer",speaking:"Votre intervieweur parle",listening:"À vous de répondre",thinking:"L'intervieweur prépare sa question",paused:"Entretien en pause",done:"Séance terminée",error:"Connexion indisponible"})[state]}</p>
+     <div className="interview-v2-orb relative size-52 sm:size-64"><VoicePoweredOrb state={state} voiceLevel={dictating ? .55 : 0} className="h-full w-full"/><span className="sr-only">{state==="speaking"?"Lina parle":dictating?"Microphone actif":state==="listening"?"À vous de répondre":"Orbe d’entretien"}</span></div>
+     <p className="mt-5 text-sm font-bold text-[#BCA7FF]">{({ready:"Prêt à commencer",speaking:"Lina vous parle",listening:"À vous de répondre",thinking:"Lina prépare sa question",paused:"Entretien en pause",done:"Séance terminée",error:"Connexion indisponible"})[state]}</p>
      <div className="mt-6 flex min-h-24 w-full items-center justify-center">
       {question&&state!=="done"&&state!=="ready"?
        <h2 aria-label={question} className="flex max-w-2xl flex-col items-center gap-3 text-balance text-center text-xl font-semibold leading-relaxed tracking-tight text-[#F3F4FF] sm:text-[27px]">

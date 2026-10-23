@@ -10,6 +10,6 @@ export function CountdownTimer({seconds=5,onComplete}:{seconds?:number;onComplet
        <Timer.Item type="seconds" className="min-w-[2ch] text-center"/>
      </Timer.Area>
    </Timer.Root>
-   <p className="text-sm text-[#B7C7EA]">Installez-vous confortablement, l’intervieweur arrive.</p>
+   <p className="text-sm text-[#B7C7EA]">Installez-vous confortablement, Lina arrive.</p>
  </div>;
 }
