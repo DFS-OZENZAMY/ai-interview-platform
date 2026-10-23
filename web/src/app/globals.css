@@ -268,3 +268,27 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   -webkit-box-shadow: none !important;
   transition: background-color 9999s ease-out 0s;
 }
+
+/* Design System V2 — public landing. Motion is composited and reduced-motion-aware. */
+.landing-gradient-text{background:linear-gradient(95deg,#5268ff 3%,#9354f2 53%,#eb50cb);-webkit-background-clip:text;background-clip:text;color:transparent}
+.landing-primary-btn{position:relative;isolation:isolate;background:linear-gradient(105deg,#5365ff,#8755f4 60%,#c951de);box-shadow:inset 0 1px 0 rgba(255,255,255,.38),0 12px 29px rgba(105,83,232,.28);transition:transform .22s ease,box-shadow .22s ease,filter .22s ease}
+.landing-primary-btn:hover{transform:translateY(-2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.42),0 16px 35px rgba(105,83,232,.37);filter:saturate(1.1)}
+.landing-primary-btn:active{transform:translateY(1px);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 5px 17px rgba(105,83,232,.22)}
+.landing-primary-btn:focus-visible{outline:3px solid #172041;outline-offset:4px}
+.landing-enter{animation:landing-appear .75s cubic-bezier(.2,.75,.2,1) both}
+.landing-enter-delayed{animation:landing-appear .9s .16s cubic-bezier(.2,.75,.2,1) both}
+.landing-coach-card{transform:translateZ(0)}
+.landing-orb{animation:landing-breathe 4.2s ease-in-out infinite}
+.landing-orbit{animation:landing-rotate 32s linear infinite}
+.landing-orbit-reverse{animation:landing-rotate 27s linear infinite reverse}
+.landing-wave{animation:landing-wave 1.2s ease-in-out infinite alternate}
+.landing-floating-note{animation:landing-hover 6s ease-in-out infinite}
+.landing-tone-violet .landing-step-icon{background:#EEE8FF;color:#8455E7}
+.landing-tone-blue .landing-step-icon{background:#E5EEFF;color:#5365FF}
+.landing-tone-pink .landing-step-icon{background:#FCE8F8;color:#D84FB9}
+@keyframes landing-appear{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes landing-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+@keyframes landing-rotate{to{transform:rotate(360deg)}}
+@keyframes landing-wave{from{transform:scaleY(.48)}to{transform:scaleY(1.18)}}
+@keyframes landing-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@media(prefers-reduced-motion:reduce){.landing-v2 *, .landing-v2 *::before,.landing-v2 *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
