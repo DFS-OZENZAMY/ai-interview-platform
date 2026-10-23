@@ -67,7 +67,7 @@ export default function DashboardPage() {
        <Link href="/preparation" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F2ECFF] hover:text-[#784DD6]"><CirclePlay size={18}/> Simulation</Link>
        <Link href="/onboarding" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F2ECFF] hover:text-[#784DD6]"><UserRound size={18}/> Mon profil</Link>
       </nav>
-      <div className="mt-auto rounded-2xl border border-[#E9DCFF] bg-gradient-to-br from-[#F4EEFF] to-[#E9F7FF] p-4"><div className="flex items-center gap-2 text-xs font-bold text-[#7055B3]"><BrainCircuit size={17}/> Coach IA</div><p className="mt-2 text-xs leading-6 text-[#695F83]">Des conseils personnalisés après votre premier entretien.</p></div>
+      <div className="mt-auto rounded-2xl border border-[#E9DCFF] bg-gradient-to-br from-[#F4EEFF] to-[#E9F7FF] p-4"><div className="flex items-center gap-2 text-xs font-bold text-[#7055B3]"><BrainCircuit size={17}/> Lina · coach IA</div><p className="mt-2 text-xs leading-6 text-[#695F83]">Des conseils personnalisés après votre premier entretien.</p></div>
       <button onClick={signOut} className="mt-4 flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm text-[#71809A] transition hover:bg-[#F0F4FE]"><LogOut size={17}/> Se déconnecter</button>
     </aside>
     <div className="min-w-0 flex-1">
@@ -127,7 +127,7 @@ export default function DashboardPage() {
 
          <div className="space-y-4">
           <motion.section {...motionIn(.12)} className={panel+" p-6"}>
-           <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#E5DFFF] text-[#7258C4]"><BrainCircuit size={19}/></span><div><h2 className="text-base font-bold">Votre coach IA</h2><p className="text-[11px] text-[#8B91A5]">Accompagnement personnalisé</p></div></div>
+           <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#E5DFFF] text-[#7258C4]"><BrainCircuit size={19}/></span><div><h2 className="text-base font-bold">Lina, votre coach IA</h2><p className="text-[11px] text-[#8B91A5]">Accompagnement personnalisé</p></div></div>
            <div className="mt-5 rounded-2xl bg-[linear-gradient(135deg,#F4EDFF,#FDE8F5)] p-5"><div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold text-[#7456BA]"><Sparkles size={14}/> {coach?"Recommandation personnalisée":"Votre prochaine étape"}</div><h3 className="text-base font-bold leading-6">{coach?.coach_priority??"Commencez par une simulation."}</h3><p className="mt-3 text-xs leading-6 text-[#626D8A]">{coach?.coach_recommendation??(hasHistory?"Vos conseils personnalisés apparaîtront après l’analyse de vos réponses.":"Votre coach analysera vos réponses pour identifier vos points forts et les compétences à développer.")}</p></div>
           </motion.section>
           <motion.section {...motionIn(.2)} className={panel+" p-6"}>

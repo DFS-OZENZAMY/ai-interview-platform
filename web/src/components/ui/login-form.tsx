@@ -130,7 +130,7 @@ export function LoginForm() {
           </div>
           <div className="auth-coach-preview mt-12 flex items-center gap-4 rounded-[26px] border border-white/90 bg-white/60 p-5 shadow-[0_15px_50px_rgba(102,84,188,.09)] backdrop-blur-xl">
             <span className="auth-pulse-orb grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#5365FF] via-[#8755F4] to-[#F064D1] text-white shadow-[0_8px_28px_rgba(132,91,235,.30)]"><AudioLines size={29}/></span>
-            <div><p className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[#865CE5]">Votre coach IA</p><p className="mt-1 text-sm font-semibold leading-6 text-[#28365D]">Un endroit pour s’entraîner, essayer et prendre confiance.</p></div>
+            <div><p className="text-[11px] font-extrabold uppercase tracking-[.14em] text-[#865CE5]">Lina, votre coach IA</p><p className="mt-1 text-sm font-semibold leading-6 text-[#28365D]">Un endroit pour s’entraîner, essayer et prendre confiance.</p></div>
           </div>
         </motion.div>
 

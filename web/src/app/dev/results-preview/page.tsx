@@ -37,7 +37,7 @@ export default function ResultsPreviewPage() {
           </div>
         </section>
         <section className="rounded-[30px] border border-[#E1D7FB] bg-gradient-to-br from-[#F3EDFF] via-[#F6EEFF] to-[#FCEAF7] p-7 sm:p-9">
-          <div className="flex items-center gap-2 text-sm font-extrabold text-[#7451CE]"><BrainCircuit size={21}/> Le regard de votre coach IA</div>
+          <div className="flex items-center gap-2 text-sm font-extrabold text-[#7451CE]"><BrainCircuit size={21}/> Le regard de Lina</div>
           <h2 className="mt-7 text-2xl font-extrabold leading-tight">Vous savez expliquer ce que vous faites. Montrez davantage ce que cela change.</h2>
           <p className="mt-5 text-sm leading-7 text-[#625E86]">Votre levier prioritaire : donner plus de poids à vos exemples professionnels en précisant le contexte, votre action, puis un résultat mesurable.</p>
           <div className="mt-7 rounded-2xl border border-white/80 bg-white/70 p-4 text-sm leading-6 text-[#614F93]"><Sparkles size={17} className="mr-2 inline"/> Conseil : préparez deux réalisations chiffrées avant votre prochain entretien.</div>

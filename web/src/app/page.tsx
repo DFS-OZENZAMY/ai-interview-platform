@@ -51,7 +51,7 @@ export default function Home() {
             <span className="landing-gradient-text">Plus de vous.</span>
           </h1>
           <p className="mt-7 max-w-[590px] text-[16px] leading-[1.85] text-[#63708D] sm:text-lg">
-            Préparez vos entretiens comme vous les vivrez vraiment. Entraînez-vous à l’oral avec un coach IA, recevez des conseils personnalisés et progressez à votre rythme.
+            Préparez vos entretiens comme vous les vivrez vraiment. Entraînez-vous à l’oral avec Lina, votre coach IA, recevez des conseils personnalisés et progressez à votre rythme.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
             <Link href="/login" className="landing-primary-btn inline-flex min-h-[58px] items-center justify-center gap-3 rounded-2xl px-7 text-[15px] font-bold text-white">
