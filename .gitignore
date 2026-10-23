@@ -54,3 +54,5 @@ poc/.wrangler/
 poc/server/node_modules
 poc/tests/node_modules
 node_modules
+# Local-only auth fixtures; never commit demo passwords
+.demo-credentials/

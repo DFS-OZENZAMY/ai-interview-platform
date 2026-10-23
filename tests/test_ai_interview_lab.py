@@ -63,6 +63,21 @@ class InterviewLabTests(unittest.TestCase):
         with self.assertRaises(LabValidationError):
             self.engine.answer({"session_id": sid, "answer": "Réponse répétée"})
 
+    def test_opt_in_warm_opening_before_main_questions(self):
+        started = self.engine.start({
+            "family": "rh", "locale": "fr", "count": 1,
+            "goals": ["communication"], "warm_opening": True,
+        })
+        self.assertEqual(started["phase"], "icebreaker")
+        self.assertIn("faire connaissance", started["question"]["prompt"])
+        next_turn = self.engine.answer({
+            "session_id": started["session_id"],
+            "answer": "Je souhaite apprendre et accompagner des équipes.",
+        })
+        self.assertEqual(next_turn["phase"], "primary")
+        self.assertFalse(next_turn["completed"])
+        self.assertEqual(len(self.provider.followup_calls), 0)
+
     def test_specialized_technical_domain(self):
         started = self.engine.start({
             "family": "technical", "domain": "data_ai", "locale": "en",
