@@ -14,6 +14,13 @@ import sys
 import secrets
 import threading
 import webbrowser
+import subprocess
+import base64
+import urllib.request
+import urllib.error
+import uuid
+import tempfile
+import shutil
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
@@ -203,7 +210,8 @@ def make_handler(questions: list[dict], sessions: dict, lock: threading.RLock):
                 return self._send({"error": "content_type_must_be_json"}, 415)
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 1 <= length <= MAX_BODY:
+                max_body = 6_500_000 if urlsplit(self.path).path == "/api/ai/transcribe" else MAX_BODY
+                if not 1 <= length <= max_body:
                     return self._send({"error": "invalid_body_size"}, 413)
                 body = json.loads(self.rfile.read(length))
                 if not isinstance(body, dict):
@@ -211,6 +219,73 @@ def make_handler(questions: list[dict], sessions: dict, lock: threading.RLock):
             except (ValueError, json.JSONDecodeError):
                 return self._send({"error": "invalid_json"}, 400)
             url = urlsplit(self.path)
+            if url.path == "/api/ai/transcribe":
+                sound = body.get("audio")
+                context = body.get("context", "")
+                mime = body.get("mime", "audio/webm")
+                if not isinstance(sound, str) or not sound or len(sound) > 6_500_000:
+                    return self._send({"error": "invalid_audio"}, 400)
+                if not isinstance(context, str) or len(context) > 300 or mime not in (
+                        "audio/webm", "audio/mp4", "audio/ogg"):
+                    return self._send({"error": "invalid_audio_metadata"}, 400)
+                key = os.environ.get("GROQ_API_KEY", "")
+                if not key:
+                    return self._send({"error": "groq_key_missing"}, 503)
+                try:
+                    raw = base64.b64decode(sound, validate=True)
+                    if not 100 < len(raw) <= 4_800_000:
+                        return self._send({"error": "invalid_audio_size"}, 400)
+                    boundary = uuid.uuid4().hex
+                    def part(name, value, filename=None, content_type=None):
+                        lead = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\""
+                                + (f"; filename=\"{filename}\"" if filename else "") + "\r\n")
+                        if content_type:
+                            lead += f"Content-Type: {content_type}\r\n"
+                        return lead.encode() + b"\r\n" + value + b"\r\n"
+                    ext = {"audio/webm": "webm", "audio/mp4": "mp4", "audio/ogg": "ogg"}[mime]
+                    payload = (part("model", b"whisper-large-v3")
+                               + part("response_format", b"json")
+                               + part("prompt", (context or "Entretien professionnel en français et en anglais. Business, data, management, talent acquisition.").encode("utf-8"))
+                               + part("file", raw, f"answer.{ext}", mime)
+                               + f"--{boundary}--\r\n".encode())
+                    req = urllib.request.Request(
+                        "https://api.groq.com/openai/v1/audio/transcriptions", data=payload,
+                        headers={"Authorization": f"Bearer {key}",
+                                 "Content-Type": f"multipart/form-data; boundary={boundary}"},
+                        method="POST")
+                    with urllib.request.urlopen(req, timeout=40) as response:
+                        transcript = json.loads(response.read(100_000))
+                    text = transcript.get("text", "")
+                    if not isinstance(text, str):
+                        return self._send({"error": "invalid_transcription"}, 502)
+                    return self._send({"text": text.strip(), "engine": "whisper-large-v3"})
+                except (ValueError, urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+                    return self._send({"error": "transcription_unavailable"}, 502)
+            if url.path == "/api/ai/tts":
+                sentence = body.get("text")
+                locale = body.get("locale", "fr")
+                if (not isinstance(sentence, str) or not 1 <= len(sentence.strip()) <= 1200
+                        or locale not in ("fr", "en")):
+                    return self._send({"error": "invalid_tts_payload"}, 400)
+                if sys.platform != "darwin" or not shutil.which("say") or not shutil.which("ffmpeg"):
+                    return self._send({"error": "local_tts_unavailable"}, 503)
+                try:
+                    with tempfile.TemporaryDirectory(prefix="interview-tts-") as tmp:
+                        aiff = str(Path(tmp) / "question.aiff")
+                        mp3 = str(Path(tmp) / "question.mp3")
+                        subprocess.run(["say", "-v", "Thomas" if locale == "fr" else "Samantha",
+                                        "-r", "175", "-o", aiff, sentence], check=True,
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=22)
+                        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", aiff,
+                                        "-codec:a", "libmp3lame", "-qscale:a", "4", mp3],
+                                       check=True, stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL, timeout=12)
+                        sound = Path(mp3).read_bytes()
+                    self._headers(200, "audio/mpeg", len(sound))
+                    self.wfile.write(sound)
+                except (subprocess.TimeoutExpired, subprocess.CalledProcessError, OSError):
+                    return self._send({"error": "local_tts_generation_failed"}, 503)
+                return
             if url.path == "/api/ai/session/start":
                 if not ai_provider.api_key:
                     return self._send({"error": "Clé API du fournisseur sélectionné non configurée (GROQ_API_KEY ou OPENAI_API_KEY)."}, 503)

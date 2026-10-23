@@ -306,6 +306,7 @@ class InterviewLab:
         description = options.get("job_description", "")
         if not isinstance(description, str) or len(description) > 3000:
             raise LabValidationError("Invalid job description")
+        warm_opening = options.get("warm_opening", False) is True
         selected = [
             q for q in self.questions
             if q["family"] == family
@@ -322,6 +323,11 @@ class InterviewLab:
         if family == "technical":
             secrets.SystemRandom().shuffle(selected)
         selected = selected[:count]
+        opener = (
+            "Bonjour et bienvenue ! J’espère que vous allez bien. Prenons quelques instants pour faire connaissance avant les questions de fond. Qu’est-ce qui vous a donné envie d’explorer ce poste ?"
+            if locale == "fr" else
+            "Hello, welcome! I hope you're doing well. Let's get to know each other before the main interview. What first drew you to this kind of role?"
+        )
         sid = secrets.token_urlsafe(24)
         with self.lock:
             self._cleanup()
@@ -331,11 +337,12 @@ class InterviewLab:
                 "family": family, "locale": locale, "domain": domain,
                 "goals": goals, "selected": selected, "position": 0,
                 "job_description": description,
-                "phase": "primary", "transcript": [], "created_at": self._now(),
+                "phase": "icebreaker" if warm_opening else "primary",
+                "opener": opener, "transcript": [], "created_at": self._now(),
             }
         return {
-            "session_id": sid, "phase": "primary", "index": 1,
-            "total": len(selected), "question": preview_question(selected[0], locale),
+            "session_id": sid, "phase": "icebreaker" if warm_opening else "primary", "index": 1,
+            "total": len(selected), "question": ({"prompt": opener, "family": family, "code": "WELCOME", "status": "draft_preview"} if warm_opening else preview_question(selected[0], locale)),
             "ai": True, "draft_preview": True, "persisted": False,
         }
 
@@ -353,6 +360,14 @@ class InterviewLab:
                 raise LabValidationError("Unknown or expired interview session")
             index = s["position"]
             current = s["selected"][index]
+            if s["phase"] == "icebreaker":
+                s["transcript"].append({"code": "WELCOME", "kind": "icebreaker",
+                                        "question": s["opener"], "answer": answer.strip()})
+                s["phase"] = "primary"
+                return {"completed": False, "phase": "primary", "index": index + 1,
+                        "total": len(s["selected"]),
+                        "question": preview_question(current, s["locale"]),
+                        "ai": True, "draft_preview": True}
             if s["phase"] == "primary":
                 followup = self.provider.followup(
                     question=current, answer=answer, locale=s["locale"],

@@ -68,6 +68,28 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
 
+## Nouvelle application d’Achraf (`web/`, Next.js) et Lina humaine
+
+**Application candidat** : la nouvelle interface d’Achraf (PR #51, branche `feat/UX-01-design-system-and-journey`, intégrée jusqu’à `3b121ed`) : accueil, connexion Supabase, onboarding, tableau de bord, préparation, entretien immersif (orbe vocale, introduction parlée, mains libres, Whisper). Elle est déployée comme **second Worker** (`ai-interview-web`) grâce à l’adaptateur officiel OpenNext, et appelle le Worker de la plateforme (`ai-interview-platform`) par une **liaison interne** `PLATFORM` : aucune URL publique ni appel au Mac d’Achraf.
+
+Adaptations, volontairement minimales :
+1. `web/src/app/api/interview/[action]/route.ts` : le pont appelle la plateforme (liaison `PLATFORM`, ou son labo local `127.0.0.1:8765` hors Cloudflare), avec un secret partagé `BRIDGE_SECRET`, et transmet le prénom du profil pour que Lina s’adresse au candidat.
+2. `web/src/app/interview/page.tsx` : l’introduction parlée utilise la voix de Lina (l’enregistrement d’origine reste en secours).
+3. `web/next.config.ts` : `cacheComponents` désactivé **uniquement** pour les builds Cloudflare (`OPENNEXT_CLOUDFLARE=1`), car non garanti sur le runtime Workers (pages bloquées) ; son code n’utilise aucune API « use cache ».
+4. `web/src/app/page.tsx` : correction d’un bogue de son dernier commit (`new Date()` dans le pied de page interdit au pré-rendu, qui empêchait tout build).
+5. Fichiers ajoutés : `open-next.config.ts` (cache servi depuis les fichiers statiques), `wrangler.jsonc`, scripts `cf:build`, `cf:preview`, `cf:deploy`.
+
+**Lina humaine** (`poc/server/lina.js`, utilisée par le simulateur pour les deux interfaces) : avant de traiter un message comme une réponse, Lina comprend l’intention — répondre, faire répéter, faire reformuler, poser une question (salaire, durée, entreprise, « tu es une IA ? »), ne pas savoir, politesse, texte incompréhensible, impolitesse, manipulation, passer, arrêter — et réagit comme une recruteuse : elle répète, reformule, répond honnêtement (elle n’invente aucune information sur l’entreprise), rassure, propose de passer, pose une limite calmement, garde son rôle, puis ramène l’entretien vers la question. Escalade progressive (2e « je ne sais pas » → question suivante ; 3e message incompréhensible → suite ; impolitesse répétée → fin courtoise avec bilan). Avec IA, le modèle tranche les cas ambigus et rédige une réplique sur mesure (sortie JSON contrôlée, jamais de note) ; les intentions évidentes restent décidées par les règles. Une manipulation glissée dans une vraie réponse n’empêche pas de traiter la réponse (consigne d’Achraf : réponse = donnée non fiable). Transitions naturelles entre questions, prénom du candidat, brise-glace d’Achraf.
+
+**Mise en ligne de l’application (second projet Cloudflare)** — Workers & Pages › Create › Import a repository (même dépôt) :
+- Nom du Worker : `ai-interview-web` ; répertoire racine : `web` ; build : `npm run cf:build` ; déploiement : `npx opennextjs-cloudflare deploy` ; branche de production : `main`.
+- **Variables de build** (publiques, intégrées au build) : `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (projet Supabase d’Achraf).
+- **Secret** : `BRIDGE_SECRET` (valeur longue et aléatoire, identique sur les deux Workers).
+- Le Worker `ai-interview-platform` doit exister (liaison `PLATFORM`) et avoir : `BRIDGE_SECRET`, `QUESTION_SOURCE=corpus-preview`, `GROQ_API_KEY` (relances, Lina, Whisper), `ELEVENLABS_API_KEY` (voix de Lina).
+- Supabase (Achraf) : migrations de sa branche appliquées (`supabase/migrations`), et l’adresse `https://ai-interview-web.<sous-domaine>.workers.dev/auth/callback` ajoutée aux URL de redirection.
+
+**Tests :** `poc/tests/lina_conversation_test.py` 24/24 avec IA et 24/24 sur règles seules ; `lab_api_test.py` 19/19 ; tests navigateur d’Achraf (ancienne interface) 5/5 sans modification ; chaîne complète vérifiée en local avec les deux Workers (Wrangler, liaison `PLATFORM`, faux Supabase, faux Groq, faux ElevenLabs) : connexion obligatoire, brise-glace, Lina (politesse, répétition, salaire, « je ne sais pas » avec le prénom), relances, bilan, 9 lectures vocales sans échec (`poc/tests/browser_web_lina_e2e.py`). Vérifications d’Achraf sur `web/` : `tsc` et `eslint` sans erreur. **Non testé :** son vrai projet Supabase et le déploiement réel du second Worker.
+
 ## Interface et simulateur d’Achraf (page d’accueil de la plateforme)
 
 **La plateforme affiche l’application d’Achraf** (`dev/new-user-e2e`) : même thème, mêmes 7 étapes (Accueil, Compte, Onboarding, Profil, Simulation, Entretien, Récapitulatif), mêmes textes, même code. Fichiers : `poc/public/index.html` et `poc/public/app.js`. Différences avec son original, et seulement celles-ci :
