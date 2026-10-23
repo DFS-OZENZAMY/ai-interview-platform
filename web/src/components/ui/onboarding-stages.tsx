@@ -216,7 +216,7 @@ export function OnboardingStages({
 
 
   return (
-    <div className={cn("mx-auto w-full max-w-[1240px] px-5 pb-20 sm:px-8", className)}>
+    <div className={cn("onboarding-v2-stages mx-auto w-full max-w-[1020px] px-4 pb-20 sm:px-8", className)}>
       <div className="flex flex-col gap-5">
         <div className="hidden">
         <aside className="relative overflow-hidden border-b border-[#3E5076] bg-[linear-gradient(160deg,#16284D,#1E315B_62%,#263C6B)] p-7 text-white backdrop-blur-2xl sm:p-9 lg:border-b-0 lg:border-r">
@@ -263,20 +263,20 @@ export function OnboardingStages({
         </aside>
         </div>
 
-        <div className="pb-5 pt-4 text-[#172033]">
-          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#3656A1]">Votre parcours prend forme</p>
-          <h1 className="mt-3 text-[clamp(2rem,4vw,3.8rem)] font-semibold leading-tight tracking-[-.055em]">
+        <div className="pb-4 pt-4 text-[#172033] sm:pb-7">
+          <p className="text-xs font-bold uppercase tracking-[.18em] text-[#8158ED]">Votre parcours prend forme</p>
+          <h1 className="mt-3 text-[clamp(2rem,4vw,3.8rem)] font-extrabold leading-tight tracking-[-.055em]">
             {firstName ? `Construisons votre profil, ${firstName}.` : "Faisons connaissance."}
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-[#526688]">Chaque réponse enrichit votre profil. Vous pouvez revenir sur les étapes précédentes à tout moment.</p>
           <div className="mt-7 flex items-center gap-3 text-xs text-[#526688]">
             <span className="font-bold text-[#172033]">{step + 1} / {steps.length}</span>
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#CBD6EF]"><motion.div animate={{width:`${percent}%`}} transition={{duration:.55}} className="h-full rounded-full bg-[#779BFF]"/></div>
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#E5E1F4]"><motion.div animate={{width:`${percent}%`}} transition={{duration:.55}} className="h-full rounded-full bg-gradient-to-r from-[#5365FF] via-[#884DFF] to-[#F34CD4]"/></div>
             <span>{percent}%</span>
           </div>
         </div>
 
-        {step > 0 && <div className="relative space-y-3 border-l-2 border-[#B4C6E9] pb-1 pl-5 sm:pl-8">
+        {step > 0 && <div className="relative space-y-3 border-l-2 border-[#D6C8F8] pb-1 pl-5 sm:pl-8">
           {Array.from({length:step},(_,i) => {
             const summaries = [
               {title:"Faisons connaissance",text:`Bonjour ${profile.firstName} ${profile.lastName}.`},
@@ -285,25 +285,25 @@ export function OnboardingStages({
               {title:"Vos priorités",text:preparationLabels.join(" · ")},
             ];
             const item = summaries[i];
-            return <motion.div key={i} layout initial={animated?{opacity:0,y:12}:false} animate={{opacity:1,y:0}} className="relative flex items-center justify-between gap-4 rounded-2xl border border-[#B3C6EF] bg-white/70 px-5 py-4 text-[#172033] shadow-[0_12px_30px_rgba(3,9,29,.15)] sm:px-7">
-              <span className="absolute -left-[30px] grid h-4 w-4 place-items-center rounded-full bg-[#79C6B2] text-[#0B1B30] sm:-left-[42px]"><Check size={11}/></span>
+            return <motion.div key={i} layout initial={animated?{opacity:0,y:12}:false} animate={{opacity:1,y:0}} className="relative flex items-center justify-between gap-4 rounded-2xl border border-white/90 bg-white/85 px-5 py-4 text-[#172033] shadow-[0_12px_35px_rgba(103,88,181,.08)] sm:px-7">
+              <span className="absolute -left-[30px] grid h-4 w-4 place-items-center rounded-full bg-[#33D5D1] text-[#0B1B30] sm:-left-[42px]"><Check size={11}/></span>
               <div className="min-w-0"><p className="text-[10px] font-bold uppercase tracking-[.15em] text-[#3656A1]">Étape {i+1} · {item.title}</p><p className="mt-2 break-words text-base font-semibold leading-6">{item.text}</p></div>
-              <button type="button" onClick={()=>{setDirection(-1);setStep(i);setFieldError("");}} className="shrink-0 rounded-xl border border-[#B7C9EA] px-3 py-2 text-xs font-semibold text-[#2947A3] transition hover:bg-[#E5ECFC]">Modifier</button>
+              <button type="button" onClick={()=>{setDirection(-1);setStep(i);setFieldError("");}} className="shrink-0 rounded-xl border border-[#D6CCF2] px-3 py-2 text-xs font-semibold text-[#7854E8] transition hover:bg-[#F2EDFF]">Modifier</button>
             </motion.div>;
           })}
         </div>}
 
-        <section className="relative flex min-w-0 flex-col overflow-hidden rounded-[24px] border border-[#B9C9EC] bg-white/70 px-6 py-9 text-[#172033] shadow-[0_22px_75px_rgba(3,11,30,.25)] sm:px-12 sm:py-12 lg:px-16" aria-label="Onboarding personnalisé">
+        <section className="relative flex min-w-0 flex-col overflow-hidden rounded-[30px] border border-white/90 bg-white/85 px-6 py-9 text-[#172033] shadow-[0_30px_85px_rgba(105,87,181,.13),inset_0_1px_0_#fff] sm:px-12 sm:py-12 lg:px-16" aria-label="Onboarding personnalisé">
           {!finished ? (
             <>
               <div className="flex items-center justify-between gap-5">
                 <span className="text-sm font-medium text-[#526079]">Étape {step + 1} sur {steps.length}</span>
-                <span className="text-sm font-semibold tabular-nums text-[#2947A3]">{percent}%</span>
+                <span className="text-sm font-semibold tabular-nums text-[#7854E8]">{percent}%</span>
               </div>
               <div className="mt-4 flex items-center gap-2" role="progressbar" aria-valuenow={step + 1} aria-valuemin={1} aria-valuemax={steps.length} aria-label="Progression de notre parcours">
                 {steps.map((item, index) => (
                   <div key={item.label} className="relative h-[7px] min-w-0 flex-1 overflow-hidden rounded-full bg-[#DFE5F5]" aria-hidden="true">
-                    <motion.div className="absolute inset-y-0 left-0 rounded-full bg-[#4762DB]" initial={false}
+                    <motion.div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#5365FF] to-[#E054CC]" initial={false}
                       animate={{ width: index < step ? "100%" : index === step ? "34%" : "0%" }}
                       transition={{ duration: animated ? 0.35 : 0, ease: "easeOut" }} />
                   </div>
@@ -317,26 +317,26 @@ export function OnboardingStages({
                     transition={{ duration: animated ? 0.4 : 0, ease: [0.2, 0.8, 0.2, 1] }}>
                     {step === 0 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2947A3]">On fait connaissance ?</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7854E8]">On fait connaissance ?</p>
                         <h1 className="mt-4 text-[30px] font-semibold leading-tight tracking-[-0.04em] text-[#172033] sm:text-[39px]">D’abord, vous.</h1>
                         <p className="mt-4 max-w-xl text-base leading-7 text-[#526079]">On va passer un peu de temps ensemble. Autant commencer par votre prénom, non ?</p>
                         <div className="mt-9 grid gap-5 sm:grid-cols-2">
                           <label className="block text-sm font-medium text-[#172033]">Prénom
                             <input autoComplete="given-name" value={profile.firstName} maxLength={80}
                               onChange={(e) => setProfile((v) => ({ ...v, firstName: e.target.value }))} placeholder="Votre prénom"
-                              className="mt-2 block min-h-12 w-full rounded-xl border border-[#D7DFEA] bg-white px-4 text-base outline-none transition focus:border-[#2947A3] focus:ring-2 focus:ring-[#2947A3]/15" />
+                              className="mt-2 block min-h-12 w-full rounded-xl border border-[#D7DFEA] bg-white px-4 text-base outline-none transition focus:border-[#8755ED] focus:ring-2 focus:ring-[#8755ED]/15" />
                           </label>
                           <label className="block text-sm font-medium text-[#172033]">Nom
                             <input autoComplete="family-name" value={profile.lastName} maxLength={80}
                               onChange={(e) => setProfile((v) => ({ ...v, lastName: e.target.value }))} placeholder="Votre nom"
-                              className="mt-2 block min-h-12 w-full rounded-xl border border-[#D7DFEA] bg-white px-4 text-base outline-none transition focus:border-[#2947A3] focus:ring-2 focus:ring-[#2947A3]/15" />
+                              className="mt-2 block min-h-12 w-full rounded-xl border border-[#D7DFEA] bg-white px-4 text-base outline-none transition focus:border-[#8755ED] focus:ring-2 focus:ring-[#8755ED]/15" />
                           </label>
                         </div>
                       </div>
                     )}
                     {step === 1 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2947A3]">Notre point de départ</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7854E8]">Notre point de départ</p>
                         <h1 className="mt-4 text-[30px] font-semibold leading-tight tracking-[-0.04em] text-[#172033] sm:text-[39px]">Aujourd’hui, où en êtes-vous ?</h1>
                         <p className="mt-3 text-sm leading-7 text-[#526079]">On va adapter les entretiens à votre situation et à votre expérience.</p>
                         <div role="radiogroup" aria-label="Situation professionnelle actuelle" className="mt-6 grid gap-2 sm:grid-cols-2">
@@ -349,8 +349,8 @@ export function OnboardingStages({
                                 professionalGoal: goalsForContext(value, value === "student" ? "starting" : current.experienceLevel).includes(current.professionalGoal)
                                   ? current.professionalGoal : goalsForContext(value, value === "student" ? "starting" : current.experienceLevel)[0],
                               }))}
-                              className={cn("rounded-2xl border p-4 text-left transition hover:border-[#7590D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3]", selected ? "border-[#2947A3] bg-[#F3F6FE]" : "border-[#E0E6EF] bg-white/65")}>
-                              <span className="flex items-start justify-between gap-2 text-sm font-semibold text-[#172033]">{title}{selected && <Check size={17} className="shrink-0 text-[#2947A3]" aria-hidden="true" />}</span>
+                              className={cn("rounded-2xl border p-4 text-left transition hover:border-[#A88BF0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8755ED]", selected ? "border-[#8755ED] bg-[#F2EDFF]" : "border-[#E0E6EF] bg-white/65")}>
+                              <span className="flex items-start justify-between gap-2 text-sm font-semibold text-[#172033]">{title}{selected && <Check size={17} className="shrink-0 text-[#7854E8]" aria-hidden="true" />}</span>
                               <span className="mt-2 block text-xs leading-5 text-[#526079]">{detail}</span>
                             </button>;
                           })}
@@ -367,7 +367,7 @@ export function OnboardingStages({
                                   professionalGoal: goalsForContext(p.employmentStatus, value).includes(p.professionalGoal)
                                     ? p.professionalGoal : goalsForContext(p.employmentStatus, value)[0],
                                 }))}
-                                className={cn("min-h-12 rounded-xl border px-2 py-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3]", selected ? "border-[#2947A3] bg-[#F3F6FE] text-[#2947A3]" : "border-[#E0E6EF] bg-white/65 text-[#526079] hover:border-[#7590D1]")}>{title}</button>;
+                                className={cn("min-h-12 rounded-xl border px-2 py-3 text-xs font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8755ED]", selected ? "border-[#8755ED] bg-[#F2EDFF] text-[#7854E8]" : "border-[#E0E6EF] bg-white/65 text-[#526079] hover:border-[#A88BF0]")}>{title}</button>;
                             })}
                           </div>
                           {profile.experienceLevel && profile.employmentStatus !== "student" && <button type="button" onClick={() => setProfile((p) => ({ ...p, experienceLevel: undefined }))} className="mt-2 min-h-9 text-xs font-medium text-[#526079] underline-offset-2 hover:underline">Je préfère préciser plus tard</button>}
@@ -376,7 +376,7 @@ export function OnboardingStages({
                     )}
                     {step === 2 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2947A3]">Notre prochaine étape</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7854E8]">Notre prochaine étape</p>
                         <h1 className="mt-4 text-[30px] font-semibold leading-tight tracking-[-0.04em] text-[#172033] sm:text-[39px]">{firstName ? `${firstName}, on vise quoi ensuite ?` : "On vise quoi ensuite ?"}</h1>
                         <p className="mt-4 text-base leading-7 text-[#526079]">Selon votre point de départ, voici les objectifs qu’on peut préparer ensemble.</p>
                         <div className="mt-8 space-y-3" role="radiogroup" aria-label="Objectif professionnel principal">
@@ -384,10 +384,10 @@ export function OnboardingStages({
                             const selected = profile.professionalGoal === value;
                             return <button key={value} type="button" role="radio" aria-checked={selected}
                               onClick={() => setProfile((p) => ({ ...p, professionalGoal: value }))}
-                              className={cn("flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition hover:border-[#7590D1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3]", selected ? "border-[#2947A3] bg-[#F3F6FE]" : "border-[#E0E6EF]")}>
-                              <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", selected ? "bg-[#2947A3] text-white" : "bg-[#EEF2F7] text-[#526079]")}><Icon size={20} aria-hidden="true" /></span>
+                              className={cn("flex w-full items-start gap-4 rounded-2xl border p-4 text-left transition hover:border-[#A88BF0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8755ED]", selected ? "border-[#8755ED] bg-[#F2EDFF]" : "border-[#E0E6EF]")}>
+                              <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl", selected ? "bg-[#8755ED] text-white" : "bg-[#EEF2F7] text-[#526079]")}><Icon size={20} aria-hidden="true" /></span>
                               <span className="flex-1"><span className="block text-[15px] font-semibold text-[#172033]">{title}</span><span className="mt-1 block text-sm leading-6 text-[#526079]">{detail}</span></span>
-                              {selected && <Check className="mt-2 shrink-0 text-[#2947A3]" size={19} aria-hidden="true" />}
+                              {selected && <Check className="mt-2 shrink-0 text-[#7854E8]" size={19} aria-hidden="true" />}
                             </button>;
                           })}
                         </div>
@@ -395,7 +395,7 @@ export function OnboardingStages({
                     )}
                     {step === 3 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2947A3]">Ce qu’on va travailler ensemble</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7854E8]">Ce qu’on va travailler ensemble</p>
                         <h1 className="mt-4 text-[30px] font-semibold leading-tight tracking-[-0.04em] text-[#172033] sm:text-[39px]">Qu’est-ce qu’on peut améliorer ensemble ?</h1>
                         <p className="mt-4 text-base leading-7 text-[#526079]">Choisissez jusqu’à trois points à travailler. On les utilisera pour adapter vos entraînements, et vous pourrez les changer.</p>
                         <div className="mt-8 grid gap-3 sm:grid-cols-2">
@@ -404,8 +404,8 @@ export function OnboardingStages({
                             const disabled = !selected && profile.preparationGoals.length >= 3;
                             return <button key={value} type="button" aria-pressed={selected} disabled={disabled}
                               onClick={() => toggleGoal(value)}
-                              className={cn("min-h-28 rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3]", selected ? "border-[#2947A3] bg-[#F3F6FE]" : "border-[#E0E6EF] hover:border-[#7590D1]", disabled && "cursor-not-allowed opacity-45")}>
-                              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-[#172033]">{title}<span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full border", selected ? "border-[#2947A3] bg-[#2947A3] text-white" : "border-[#D1DAE7]")}>{selected && <Check size={14} aria-hidden="true" />}</span></span>
+                              className={cn("min-h-28 rounded-2xl border p-4 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8755ED]", selected ? "border-[#8755ED] bg-[#F2EDFF]" : "border-[#E0E6EF] hover:border-[#A88BF0]", disabled && "cursor-not-allowed opacity-45")}>
+                              <span className="flex items-center justify-between gap-2 text-sm font-semibold text-[#172033]">{title}<span className={cn("grid h-6 w-6 shrink-0 place-items-center rounded-full border", selected ? "border-[#8755ED] bg-[#8755ED] text-white" : "border-[#D1DAE7]")}>{selected && <Check size={14} aria-hidden="true" />}</span></span>
                               <span className="mt-2 block text-sm leading-6 text-[#526079]">{detail}</span>
                             </button>;
                           })}
@@ -415,7 +415,7 @@ export function OnboardingStages({
                     )}
                     {step === 4 && (
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#2947A3]">On y est presque</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7854E8]">On y est presque</p>
                         <h1 className="mt-4 text-[30px] font-semibold leading-tight tracking-[-0.04em] text-[#172033] sm:text-[39px]">Dans quelle langue on s’entraîne ?</h1>
                         <p className="mt-4 max-w-lg text-base leading-7 text-[#526079]">Choisissez votre langue pour commencer. On pourra en changer avant chaque entretien.</p>
                         <div className="mt-10 grid gap-4 sm:grid-cols-2" role="radiogroup" aria-label="Langue préférée">
@@ -423,8 +423,8 @@ export function OnboardingStages({
                             const selected = profile.preferredLocale === item.value;
                             return <button key={item.value} type="button" role="radio" aria-checked={selected}
                               onClick={() => setProfile((p) => ({ ...p, preferredLocale: item.value }))}
-                              className={cn("rounded-2xl border p-6 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3]", selected ? "border-[#2947A3] bg-[#F3F6FE]" : "border-[#E0E6EF] hover:border-[#7590D1]")}>
-                              <span className="flex items-center justify-between font-semibold text-[#172033]">{item.title}{selected && <Check size={19} className="text-[#2947A3]" aria-hidden="true" />}</span>
+                              className={cn("rounded-2xl border p-6 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8755ED]", selected ? "border-[#8755ED] bg-[#F2EDFF]" : "border-[#E0E6EF] hover:border-[#A88BF0]")}>
+                              <span className="flex items-center justify-between font-semibold text-[#172033]">{item.title}{selected && <Check size={19} className="text-[#7854E8]" aria-hidden="true" />}</span>
                               <span className="mt-2 block text-sm leading-6 text-[#526079]">{item.subtitle}</span>
                             </button>;
                           })}
@@ -438,11 +438,11 @@ export function OnboardingStages({
                 {fieldError && <p role="alert" className="mb-4 text-sm text-[#B42318]">{fieldError}</p>}
                 <div className="flex items-center justify-between gap-4">
                   <button type="button" onClick={previous}
-                    disabled={step === 0 && !returnToRecap} className="inline-flex min-h-12 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-[#526079] transition hover:bg-[#F1F4F9] disabled:cursor-not-allowed disabled:opacity-30">
+                    disabled={step === 0 && !returnToRecap} className="onboarding-glass-button inline-flex min-h-12 items-center gap-2 rounded-2xl px-5 text-sm font-semibold">
                     <ArrowLeft size={17} aria-hidden="true" /> Retour
                   </button>
                   <button type="button" onClick={next} disabled={!canProceed || saving}
-                    className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-[#2947A3] px-6 text-sm font-semibold text-white transition hover:bg-[#1E3586] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2947A3] disabled:cursor-not-allowed disabled:opacity-50">
+                    className="onboarding-glass-button-primary inline-flex min-h-12 items-center justify-center gap-3 rounded-2xl px-6 text-sm font-semibold text-white">
                     {returnToRecap ? "Enregistrer et revenir" : step === steps.length - 1 ? "C’est parti !" : "Continuer"}
                     {step === steps.length - 1 ? <Check size={17} aria-hidden="true" /> : <ChevronRight size={17} aria-hidden="true" />}
                   </button>

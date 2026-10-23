@@ -13,7 +13,7 @@ import { readInterviewResults, comparableProgress, type InterviewResult } from "
 
 const goalNames = Object.fromEntries(professionalOptions.map(item => [item.value,item.title])) as Record<ProfessionalGoal,string>;
 const priorityNames: Record<PreparationGoal,string> = { confidence:"Confiance en soi", answer_structure:"Structure des réponses", communication:"Communication",domain_knowledge:"Connaissances métier",stress_management:"Gestion du stress" };
-const panel = "rounded-[24px] border border-[#E0E5F1] bg-white/90 shadow-[0_12px_36px_rgba(51,76,133,.055)]";
+const panel = "dashboard-v2-panel rounded-[26px] border border-white/90 bg-white/85 shadow-[0_15px_45px_rgba(96,83,164,.08)] backdrop-blur-xl";
 const skillTones = [
   {bg:"bg-[#E4F6F1]",ink:"text-[#17836C]",border:"border-[#C4E9DD]"},
   {bg:"bg-[#F2EAFE]",ink:"text-[#7153B9]",border:"border-[#DED1F7]"},
@@ -53,22 +53,25 @@ export default function DashboardPage() {
  const actionTitle=!hasHistory?"Votre premier entretien commence ici.":hasSeveral&&coach?"Travaillez votre prochain objectif.":"Continuez votre préparation.";
  const actionBody=!hasHistory?"Entraînez-vous en entretien RH ou technique, avec des questions adaptées à votre objectif.":coach?`Votre prochain défi : ${coach.coach_priority}. Retrouvez vos objectifs dans une nouvelle simulation.`:"Chaque entretien est une occasion de progresser. Configurez votre prochaine séance.";
  const situation=profile?.employmentStatus?employmentOptions.find(x=>x.value===profile.employmentStatus)?.title:null;
- return <main className="relative min-h-screen overflow-hidden bg-[#F5F7FC] text-[#172033]">
-   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_65%_60%_at_88%_2%,rgba(199,213,255,.43),transparent_75%)]" aria-hidden/>
-   <div className="relative mx-auto flex min-h-screen max-w-[1640px]">
-    <aside className="sticky top-0 hidden h-screen w-[212px] shrink-0 flex-col border-r border-[#E0E6F1] bg-white/75 px-4 py-6 lg:flex">
-      <Link href="/" className="flex items-center gap-2.5 px-2 text-[14px] font-extrabold tracking-tight"><span className="grid size-10 place-items-center rounded-[13px] bg-[#E2E9FF] text-[#3E56C1]"><Sparkles size={21}/></span><span>Interview<span className="block text-[10px] font-semibold tracking-[.15em] text-[#6779A2]">PLATFORM</span></span></Link>
+ return <main className="dashboard-v2 relative min-h-dvh overflow-x-clip bg-[#F8F9FF] text-[#172041]">
+   <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+    <div className="absolute -right-44 -top-48 h-[670px] w-[670px] rounded-full bg-[#EBCDF8]/55 blur-[110px]"/>
+    <div className="absolute -left-48 top-32 h-[680px] w-[680px] rounded-full bg-[#D7E5FF]/65 blur-[110px]"/>
+   </div>
+   <div className="relative mx-auto flex min-h-screen max-w-[1720px]">
+    <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/75 bg-white/65 px-5 py-7 backdrop-blur-2xl lg:flex">
+      <Link href="/" className="flex items-center gap-2.5 px-2 text-[14px] font-extrabold tracking-tight"><span className="grid size-10 place-items-center rounded-[13px] bg-gradient-to-br from-[#5365FF] via-[#8755F4] to-[#E054C9] text-white"><Sparkles size={21}/></span><span>Interview<span className="block text-[10px] font-semibold tracking-[.15em] text-[#8B62E7]">LAB</span></span></Link>
       <p className="mb-3 mt-12 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-[#8593AF]">Espace candidat</p>
       <nav aria-label="Navigation candidat" className="space-y-1.5">
-       <Link href="/dashboard" aria-current="page" className="flex min-h-12 items-center gap-3 rounded-xl bg-[#E8EDFF] px-3.5 text-sm font-bold text-[#3A55B9]"><LayoutDashboard size={18}/> Vue d’ensemble</Link>
-       <Link href="/preparation" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F0F4FE] hover:text-[#3A55B9]"><CirclePlay size={18}/> Simulation</Link>
-       <Link href="/onboarding" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F0F4FE] hover:text-[#3A55B9]"><UserRound size={18}/> Mon profil</Link>
+       <Link href="/dashboard" aria-current="page" className="flex min-h-12 items-center gap-3 rounded-2xl bg-[#EDE7FF] px-3.5 text-sm font-bold text-[#784DD6]"><LayoutDashboard size={18}/> Vue d’ensemble</Link>
+       <Link href="/preparation" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F2ECFF] hover:text-[#784DD6]"><CirclePlay size={18}/> Simulation</Link>
+       <Link href="/onboarding" className="flex min-h-12 items-center gap-3 rounded-xl px-3.5 text-sm font-medium text-[#62718D] transition hover:bg-[#F2ECFF] hover:text-[#784DD6]"><UserRound size={18}/> Mon profil</Link>
       </nav>
-      <div className="mt-auto rounded-2xl border border-[#E4D9FA] bg-[#F5EFFD] p-4"><div className="flex items-center gap-2 text-xs font-bold text-[#7055B3]"><BrainCircuit size={17}/> Coach IA</div><p className="mt-2 text-xs leading-6 text-[#695F83]">Des conseils personnalisés après votre premier entretien.</p></div>
+      <div className="mt-auto rounded-2xl border border-[#E9DCFF] bg-gradient-to-br from-[#F4EEFF] to-[#E9F7FF] p-4"><div className="flex items-center gap-2 text-xs font-bold text-[#7055B3]"><BrainCircuit size={17}/> Coach IA</div><p className="mt-2 text-xs leading-6 text-[#695F83]">Des conseils personnalisés après votre premier entretien.</p></div>
       <button onClick={signOut} className="mt-4 flex min-h-11 items-center gap-3 rounded-xl px-3.5 text-sm text-[#71809A] transition hover:bg-[#F0F4FE]"><LogOut size={17}/> Se déconnecter</button>
     </aside>
     <div className="min-w-0 flex-1">
-     <header className="flex min-h-[78px] items-center justify-between gap-4 border-b border-[#E1E6F1] bg-white/55 px-5 sm:px-8 lg:px-9">
+     <header className="flex min-h-[78px] items-center justify-between gap-4 border-b border-white/80 bg-white/60 backdrop-blur-xl px-5 sm:px-8 lg:px-9">
       <div className="flex items-center gap-2 text-xs font-semibold text-[#70819F]"><LayoutDashboard size={17} className="text-[#4770D8]"/><span className="hidden sm:inline">Espace candidat</span><ChevronRight size={13} className="hidden sm:inline"/><span className="text-[#172033]">Vue d’ensemble</span></div>
       <div className="flex items-center gap-3">
        <span className="hidden rounded-full bg-[#E5F6EF] px-3 py-2 text-xs font-semibold text-[#237B65] sm:inline-flex"><span className="mr-2 h-2 w-2 rounded-full bg-[#33B996]"/> Mon espace</span>
@@ -76,36 +79,36 @@ export default function DashboardPage() {
        <button onClick={signOut} aria-label="Se déconnecter" className="grid size-10 place-items-center rounded-full border border-[#CFDAF5] text-[#4665BD] lg:hidden"><LogOut size={18}/></button>
       </div>
      </header>
-     <div className="w-full px-5 pb-16 pt-9 sm:px-8 lg:px-9">
+     <div className="w-full px-5 pb-16 pt-9 sm:px-8 lg:px-10">
       {loadError?<div role="alert" className={panel+" p-8"}>{loadError}<button onClick={()=>window.location.reload()} className="ml-3 font-semibold text-[#3456D7] underline">Réessayer</button></div>:
        profile===undefined?<div role="status" className="space-y-4 animate-pulse"><div className="h-14 w-2/3 rounded-xl bg-[#E3E9F7]"/><div className="h-56 rounded-2xl bg-[#E3E9F7]"/><div className="h-40 rounded-2xl bg-[#E3E9F7]"/></div>:
-       profile===null?<section className={panel+" p-10"}><h1 className="text-3xl font-bold">Bienvenue dans votre espace</h1><p className="mt-3 text-[#61718F]">Complétez votre profil pour personnaliser votre préparation.</p><Link href="/onboarding" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#3456D7] px-6 py-3 font-bold text-white">Compléter mon profil <ArrowRight size={17}/></Link></section>:
+       profile===null?<section className={panel+" p-10"}><h1 className="text-3xl font-bold">Bienvenue dans votre espace</h1><p className="mt-3 text-[#61718F]">Complétez votre profil pour personnaliser votre préparation.</p><Link href="/onboarding" className="mt-6 inline-flex items-center gap-2 dashboard-v2-primary rounded-xl px-6 py-3 font-bold text-white">Compléter mon profil <ArrowRight size={17}/></Link></section>:
        <>
         <motion.section {...motionIn(0)} className="mb-7 flex flex-wrap items-end justify-between gap-5">
-         <div><p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.18em] text-[#4D65BC]">Votre espace de préparation</p><h1 className="text-[clamp(2.2rem,3.6vw,3.6rem)] font-bold leading-[1.09] tracking-[-.055em]">Bonjour, {profile.firstName || "vous"}<span className="text-[#5272DF]">.</span></h1><p className="mt-3 max-w-2xl text-sm leading-7 text-[#60718F]">Une étape à la fois, développez vos compétences et préparez vos prochains entretiens.</p></div>
+         <div><p className="mb-2 text-[11px] font-extrabold uppercase tracking-[.18em] text-[#8655EA]">Votre espace de préparation</p><h1 className="text-[clamp(2.2rem,3.6vw,3.6rem)] font-extrabold leading-[1.09] tracking-[-.055em]">Bonjour, {profile.firstName || "vous"}<span className="text-[#E054C9]">.</span></h1><p className="mt-3 max-w-2xl text-sm leading-7 text-[#60718F]">Une étape à la fois, développez vos compétences et préparez vos prochains entretiens.</p></div>
         </motion.section>
 
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(285px,.85fr)]">
          <div className="space-y-4">
-          <motion.section {...motionIn(.08)} className="relative overflow-hidden rounded-[25px] border border-[#CBD4FA] bg-[linear-gradient(125deg,#EEF2FF,#E6EAFD_62%,#EDE7FF)] p-7 shadow-[0_12px_35px_rgba(76,93,158,.10)] sm:p-8">
-           <div className="pointer-events-none absolute -right-24 -top-32 size-80 rounded-full bg-[#A69DFC]/22 blur-3xl" aria-hidden/>
-           <div className="relative"><span className="inline-flex items-center gap-2 rounded-full border border-[#C1C8F6] bg-white/75 px-3 py-1.5 text-xs font-bold text-[#4D57B0]"><WandSparkles size={15}/> Votre prochaine étape</span>
+          <motion.section {...motionIn(.08)} className="relative overflow-hidden dashboard-v2-hero rounded-[28px] border border-white/90 bg-[linear-gradient(115deg,#ECEDFF_0%,#EDE7FF_55%,#FCE6F5_100%)] p-7 shadow-[0_20px_60px_rgba(112,86,206,.14)] sm:p-8">
+           <div className="pointer-events-none absolute -right-24 -top-32 size-80 rounded-full bg-[#BD88FA]/35 blur-3xl" aria-hidden/>
+           <div className="relative"><span className="inline-flex items-center gap-2 rounded-full border border-white/90 bg-white/75 px-3 py-1.5 text-xs font-bold text-[#7A52D9]"><WandSparkles size={15}/> Votre prochaine étape</span>
             <h2 className="mt-5 max-w-xl text-[clamp(1.7rem,2.5vw,2.5rem)] font-bold leading-[1.13] tracking-[-.04em]">{actionTitle}</h2>
             <p className="mt-4 max-w-lg text-sm leading-7 text-[#5B6887]">{actionBody}</p>
-            <div className="mt-7 flex flex-wrap items-center gap-3"><Link href="/preparation" className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-[#3456D7] px-5 text-sm font-bold text-white transition hover:bg-[#2644B9]"><Play size={17} fill="currentColor"/> {hasHistory?"Configurer ma prochaine simulation":"Configurer ma première simulation"}</Link><span className="text-xs font-medium text-[#687799]">Une préparation à votre rythme</span></div>
+            <div className="mt-7 flex flex-wrap items-center gap-3"><Link href="/preparation" className="inline-flex min-h-12 items-center gap-2 dashboard-v2-primary rounded-2xl px-5 text-sm font-bold text-white"><Play size={17} fill="currentColor"/> {hasHistory?"Configurer ma prochaine simulation":"Configurer ma première simulation"}</Link><span className="text-xs font-medium text-[#687799]">Une préparation à votre rythme</span></div>
            </div>
           </motion.section>
 
           <motion.section {...motionIn(.15)} aria-label="Votre progression" className="grid gap-3 sm:grid-cols-3">
            {[
-            {label:"Simulations",value:String(results.length),note:hasHistory?"Séances enregistrées":"Aucune séance réalisée",icon:MessageSquareText,tone:"border-[#C9D8F9] bg-[#EDF3FF] text-[#315EC0]"},
-            {label:"Dernier score",value:trend.score===null?"—":String(trend.score),note:trend.score===null?"Pas encore de bilan noté":"Dernière évaluation disponible",icon:Target,tone:"border-[#BFE6D8] bg-[#E9F9F2] text-[#17836C]"},
-            {label:"Progression",value:trend.delta===null?"—":`${trend.delta>0?"+":""}${trend.delta} pt`,note:trend.delta===null?"En attente de bilans comparables":"Même type d’entretien",icon:TrendingUp,tone:"border-[#EDD9B8] bg-[#FFF5E7] text-[#A77025]"}
-           ].map(({label,value,note,icon:Icon,tone})=><div key={label} className={`rounded-[20px] border p-5 transition duration-300 hover:-translate-y-1 ${tone}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold">{label}</p><Icon size={20}/></div><div className="mt-5 text-4xl font-bold leading-none text-[#172033]">{value}</div><p className="mt-3 text-xs leading-5 text-[#66748E]">{note}</p></div>)}
+            {label:"Simulations",value:String(results.length),note:hasHistory?"Séances enregistrées":"Aucune séance réalisée",icon:MessageSquareText,tone:"border-[#D3D5FF] bg-[#F0F0FF] text-[#6654D5]"},
+            {label:"Dernier score",value:trend.score===null?"—":String(trend.score),note:trend.score===null?"Pas encore de bilan noté":"Dernière évaluation disponible",icon:Target,tone:"border-[#BCECE8] bg-[#E9FBF9] text-[#188D90]"},
+            {label:"Progression",value:trend.delta===null?"—":`${trend.delta>0?"+":""}${trend.delta} pt`,note:trend.delta===null?"En attente de bilans comparables":"Même type d’entretien",icon:TrendingUp,tone:"border-[#FFD5E8] bg-[#FFF0F7] text-[#C53F94]"}
+           ].map(({label,value,note,icon:Icon,tone})=><div key={label} className={`dashboard-v2-stat rounded-[22px] border p-5 transition duration-300 hover:-translate-y-1 ${tone}`}><div className="flex items-center justify-between gap-2"><p className="text-xs font-bold">{label}</p><Icon size={20}/></div><div className="mt-5 text-4xl font-bold leading-none text-[#172033]">{value}</div><p className="mt-3 text-xs leading-5 text-[#66748E]">{note}</p></div>)}
           </motion.section>
 
           <motion.section {...motionIn(.22)} className={panel+" p-6 sm:p-7"}>
-           <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-bold">Votre parcours de préparation</h2><p className="mt-1 text-xs text-[#73819A]">Un plan adapté à votre profil, étape par étape.</p></div><span className="rounded-full bg-[#E8F6EE] px-3 py-1.5 text-xs font-semibold text-[#218268]">{!hasHistory?"Première étape":hasSeveral?"Parcours en cours":"Premier bilan"}</span></div>
+           <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-bold">Votre parcours de préparation</h2><p className="mt-1 text-xs text-[#73819A]">Un plan adapté à votre profil, étape par étape.</p></div><span className="rounded-full bg-[#E5FAF5] px-3 py-1.5 text-xs font-semibold text-[#168779]">{!hasHistory?"Première étape":hasSeveral?"Parcours en cours":"Premier bilan"}</span></div>
            <div className="mt-6 grid gap-3 md:grid-cols-3">
             {[
               {label:"Profil créé",detail:"Vos objectifs sont enregistrés",icon:Check,state:"done"},
@@ -125,7 +128,7 @@ export default function DashboardPage() {
          <div className="space-y-4">
           <motion.section {...motionIn(.12)} className={panel+" p-6"}>
            <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#E5DFFF] text-[#7258C4]"><BrainCircuit size={19}/></span><div><h2 className="text-base font-bold">Votre coach IA</h2><p className="text-[11px] text-[#8B91A5]">Accompagnement personnalisé</p></div></div>
-           <div className="mt-5 rounded-2xl bg-[linear-gradient(135deg,#F4EDFF,#EDF1FF)] p-5"><div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold text-[#7456BA]"><Sparkles size={14}/> {coach?"Recommandation personnalisée":"Votre prochaine étape"}</div><h3 className="text-base font-bold leading-6">{coach?.coach_priority??"Commencez par une simulation."}</h3><p className="mt-3 text-xs leading-6 text-[#626D8A]">{coach?.coach_recommendation??(hasHistory?"Vos conseils personnalisés apparaîtront après l’analyse de vos réponses.":"Votre coach analysera vos réponses pour identifier vos points forts et les compétences à développer.")}</p></div>
+           <div className="mt-5 rounded-2xl bg-[linear-gradient(135deg,#F4EDFF,#FDE8F5)] p-5"><div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold text-[#7456BA]"><Sparkles size={14}/> {coach?"Recommandation personnalisée":"Votre prochaine étape"}</div><h3 className="text-base font-bold leading-6">{coach?.coach_priority??"Commencez par une simulation."}</h3><p className="mt-3 text-xs leading-6 text-[#626D8A]">{coach?.coach_recommendation??(hasHistory?"Vos conseils personnalisés apparaîtront après l’analyse de vos réponses.":"Votre coach analysera vos réponses pour identifier vos points forts et les compétences à développer.")}</p></div>
           </motion.section>
           <motion.section {...motionIn(.2)} className={panel+" p-6"}>
            <div className="flex items-center justify-between"><h2 className="text-base font-bold">Score de préparation</h2><Target size={19} className="text-[#3C68C9]"/></div>

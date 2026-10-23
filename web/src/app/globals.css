@@ -292,3 +292,220 @@ button:focus-visible, a:focus-visible, input:focus-visible {
 @keyframes landing-wave{from{transform:scaleY(.48)}to{transform:scaleY(1.18)}}
 @keyframes landing-hover{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
 @media(prefers-reduced-motion:reduce){.landing-v2 *, .landing-v2 *::before,.landing-v2 *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+/* Landing V2.1 — floating liquid header, responsive touch targets and scroll reveals. */
+.landing-v2 { overflow-x: clip; }
+.landing-header-shell { pointer-events:none; }
+.landing-liquid-header {
+  pointer-events:auto;
+  background:linear-gradient(130deg,rgba(255,255,255,.88),rgba(244,242,255,.73) 58%,rgba(255,255,255,.83));
+  border:1px solid rgba(255,255,255,.95);
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.94),inset 0 -1px 0 rgba(152,140,213,.11),0 10px 35px rgba(73,71,137,.1),0 2px 9px rgba(75,67,139,.05);
+  -webkit-backdrop-filter:blur(22px) saturate(170%);
+  backdrop-filter:blur(22px) saturate(170%);
+}
+.landing-liquid-header::before {
+  content:"";position:absolute;inset:1px 14% auto 14%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.98),transparent);
+  pointer-events:none;
+}
+.landing-scroll-section { position:relative; }
+@supports (animation-timeline:view()) {
+  .landing-scroll-section > div {
+    animation:landing-scroll-in both ease-out;
+    animation-timeline:view();
+    animation-range:entry 0% entry 28%;
+  }
+}
+@keyframes landing-scroll-in { from {opacity:.62;transform:translateY(22px)} to {opacity:1;transform:translateY(0)} }
+@media(max-width:640px){
+ .landing-v2 {scroll-padding-top:85px;}
+ .landing-v2 .landing-coach-card {box-shadow:0 18px 55px rgba(90,82,175,.12),inset 0 2px 0 rgba(255,255,255,.9)}
+ .landing-v2 .landing-primary-btn {touch-action:manipulation;}
+}
+@media(prefers-reduced-motion:reduce){
+ .landing-scroll-section > div {animation:none!important;}
+}
+
+
+/* Landing V2.2 — reliable fixed liquid header and one continuous closing surface. */
+.landing-header-shell { position:fixed; left:0; right:0; top:0; z-index:50; transform:none; }
+.landing-bottom-section {
+  background-color:#11183B;
+  background-image:radial-gradient(ellipse 72% 120% at 93% 35%,rgba(104,73,204,.16),transparent 75%);
+}
+.landing-footer {
+  background: #11183B;
+}
+.landing-footer::before { display:none; }
+@media(max-width:640px){
+ .landing-liquid-header { -webkit-backdrop-filter:blur(15px) saturate(150%); backdrop-filter:blur(15px) saturate(150%); }
+}
+
+
+/* V2.4 proportions: readable line length, deliberate desktop scale, no oversized empty gutters. */
+.landing-v2 { font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif); }
+.landing-v2 .landing-step-card { display:flex;flex-direction:column; }
+.landing-v2 .landing-step-card h3 {text-wrap:balance;}
+.landing-v2 h1,.landing-v2 h2 {text-wrap:balance;}
+@media(min-width:1600px) {
+  .landing-v2 .landing-coach-card { box-shadow:0 32px 105px rgba(90,82,175,.17),inset 0 2px 0 rgba(255,255,255,.9); }
+}
+
+
+/* Auth V2: same warm identity as the public landing, with stronger cyan and coral accents. */
+.auth-gradient-text{background:linear-gradient(95deg,#5268FF,#9153F2 56%,#F34CD4);-webkit-background-clip:text;background-clip:text;color:transparent}
+.auth-v2-card{box-shadow:inset 0 1px 0 #fff,0 30px 95px rgba(92,82,166,.14),0 25px 60px rgba(207,96,224,.10)}
+.auth-v2-primary{background:linear-gradient(105deg,#5365FF,#8755F4 57%,#E054C9);box-shadow:0 12px 32px rgba(113,89,233,.27),inset 0 1px 0 rgba(255,255,255,.34);transition:transform .2s ease,box-shadow .2s ease}
+.auth-v2-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 15px 37px rgba(113,89,233,.38)}
+.auth-v2-primary:active:not(:disabled){transform:scale(.985)}
+.auth-perk{display:inline-flex;gap:8px;align-items:center;border:1px solid rgba(255,255,255,.88);background:rgba(255,255,255,.68);padding:10px 13px;border-radius:999px;font-size:12px;font-weight:700;color:#566181;backdrop-filter:blur(15px)}
+.auth-perk:nth-child(2){color:#1F8E98;background:#E5FCFA;border-color:#D5F7F4}
+.auth-perk:nth-child(3){color:#C65D81;background:#FFECF0;border-color:#FFDFE9}
+.auth-pulse-orb{animation:landing-breathe 4s ease-in-out infinite}
+@media(prefers-reduced-motion:reduce){.auth-pulse-orb{animation:none}.auth-v2-primary{transition:none}}
+
+
+/* Design System V2 — onboarding (scoped, never affects other views). */
+.onboarding-v2 { font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif); }
+.onboarding-v2-stages input {border-radius:14px;transition:border-color .2s,box-shadow .2s}
+.onboarding-v2-stages input:focus{border-color:#884DFF;box-shadow:0 0 0 4px rgba(136,77,255,.1)}
+.onboarding-v2-stages button[aria-checked="true"],.onboarding-v2-stages button[aria-pressed="true"] {
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 5px 20px rgba(136,77,255,.08);
+}
+.onboarding-v2-stages button[role="radio"],.onboarding-v2-stages button[aria-pressed] {
+ transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease,background-color .2s ease;
+}
+.onboarding-v2-stages button[role="radio"]:hover:not(:disabled),.onboarding-v2-stages button[aria-pressed]:hover:not(:disabled){transform:translateY(-2px)}
+.onboarding-v2-primary { background:linear-gradient(105deg,#5365FF,#8755F4 58%,#E054C9);box-shadow:0 12px 27px rgba(113,89,233,.24),inset 0 1px 0 rgba(255,255,255,.35); }
+.onboarding-v2-primary:hover:not(:disabled) {transform:translateY(-2px);box-shadow:0 14px 32px rgba(113,89,233,.34)}
+.onboarding-v2-primary:active:not(:disabled){transform:scale(.98)}
+@media(prefers-reduced-motion:reduce){.onboarding-v2-stages button {transition:none!important;transform:none!important}}
+
+/* Onboarding: consistent high-contrast liquid-glass navigation across all steps. */
+.onboarding-glass-button,
+.onboarding-glass-button-primary {
+  position:relative;
+  -webkit-backdrop-filter:blur(18px) saturate(160%);
+  backdrop-filter:blur(18px) saturate(160%);
+  transition:transform .2s ease,box-shadow .2s ease,background-color .2s ease,filter .2s ease;
+}
+.onboarding-glass-button {
+  border:1px solid rgba(204,199,232,.95);
+  background:rgba(255,255,255,.82);
+  color:#344366;
+  box-shadow:inset 0 1px 0 #fff,0 8px 22px rgba(95,82,160,.09);
+}
+.onboarding-glass-button:hover:not(:disabled){transform:translateY(-1px);background:#fff;box-shadow:0 12px 28px rgba(95,82,160,.15)}
+.onboarding-glass-button:disabled{opacity:.56;cursor:not-allowed}
+.onboarding-glass-button-primary {
+  border:1px solid rgba(255,255,255,.6);
+  background:linear-gradient(120deg,#5365FF,#8755F4 57%,#DF4DC5);
+  color:#fff !important;
+  -webkit-text-fill-color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34),0 12px 30px rgba(113,89,233,.28);
+}
+.onboarding-glass-button-primary:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.05);box-shadow:0 16px 35px rgba(113,89,233,.35)}
+.onboarding-glass-button-primary:disabled{opacity:.50;cursor:not-allowed}
+.onboarding-glass-button:focus-visible,.onboarding-glass-button-primary:focus-visible{outline:3px solid #7959E7;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.onboarding-glass-button,.onboarding-glass-button-primary{transition:none!important;transform:none!important}}
+
+/* Navigation visibility: disabled CTA still visibly labeled, always legible. */
+.onboarding-v2 .onboarding-glass-button-primary:disabled {
+ opacity:.8;
+ background:linear-gradient(120deg,#6774E9,#9168D9 57%,#C36DB8);
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+}
+.onboarding-v2 .onboarding-glass-button:disabled {opacity:.7;color:#53617B}
+.onboarding-v2 .onboarding-glass-button-primary svg {color:#fff;stroke:#fff}
+
+
+/* Dashboard V2: bright coaching workspace, scoped to candidate dashboard. */
+.dashboard-v2{font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif)}
+.dashboard-v2-primary {
+ background:linear-gradient(105deg,#5365FF,#8856F4 58%,#DA4FCC);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 28px rgba(110,86,228,.26);
+ transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+}
+.dashboard-v2-primary:hover{transform:translateY(-2px);filter:brightness(1.04);box-shadow:0 16px 34px rgba(110,86,228,.34)}
+.dashboard-v2-primary:active{transform:scale(.985)}
+.dashboard-v2-panel{box-shadow:inset 0 1px 0 rgba(255,255,255,.92),0 15px 45px rgba(96,83,164,.08)}
+.dashboard-v2-stat{box-shadow:inset 0 1px 0 rgba(255,255,255,.82),0 9px 26px rgba(109,93,167,.06)}
+.dashboard-v2 a:focus-visible,.dashboard-v2 button:focus-visible{outline:3px solid #8455E8;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.dashboard-v2-primary{transition:none!important;transform:none!important}}
+
+
+/* Preparation V2: warm luminous coaching flow, scoped to this route. */
+.preparation-v2 { font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif); }
+.preparation-glass {box-shadow:inset 0 1px 0 #fff,0 22px 60px rgba(108,88,174,.11)}
+.preparation-glass-secondary,.preparation-glass-primary {
+  -webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);
+  transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+}
+.preparation-glass-secondary {color:#344366;background:rgba(255,255,255,.81);border:1px solid #D5CCE8;box-shadow:inset 0 1px 0 #fff,0 8px 22px rgba(95,82,160,.1)}
+.preparation-glass-primary {color:#fff!important;-webkit-text-fill-color:#fff;background:linear-gradient(110deg,#5365FF,#8755F4 58%,#DF4DC5);border:1px solid rgba(255,255,255,.65);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 30px rgba(113,89,233,.27)}
+.preparation-glass-secondary:hover,.preparation-glass-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 35px rgba(113,89,233,.2)}
+.preparation-glass-primary:active,.preparation-glass-secondary:active{transform:scale(.985)}
+.preparation-v2 button[aria-checked="true"],.preparation-v2 button[aria-pressed="true"]{box-shadow:0 6px 20px rgba(128,86,220,.09)}
+.preparation-v2 button:focus-visible,.preparation-v2 a:focus-visible{outline:3px solid #8659EB;outline-offset:3px}
+@media(prefers-reduced-motion:reduce){.preparation-glass-secondary,.preparation-glass-primary{transition:none!important;transform:none!important}}
+
+/* Visible navigation in all preparation steps: prevent inherited button resets. */
+.preparation-v2 button.preparation-glass-primary {
+  display:inline-flex;align-items:center;justify-content:center;min-height:52px;
+  background:linear-gradient(110deg,#5365FF 0%,#8755F4 58%,#DF4DC5 100%)!important;
+  color:#fff!important;-webkit-text-fill-color:#fff!important;
+  border:1px solid rgba(255,255,255,.7)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 12px 30px rgba(113,89,233,.28)!important;
+}
+.preparation-v2 button.preparation-glass-primary:disabled{opacity:.80!important;filter:saturate(.82);cursor:not-allowed}
+.preparation-v2 button.preparation-glass-primary svg{color:#fff!important;stroke:#fff!important}
+.preparation-v2 button.preparation-glass-secondary{background:rgba(255,255,255,.9)!important;color:#344366!important;border:1px solid #CEC4E7!important;box-shadow:0 8px 22px rgba(95,82,160,.1)!important}
+
+
+/* Interview intro V2 — focus-mode counterpart to vibrant light screens. */
+.interview-intro-v2{font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif)}
+.intro-v2-pill{border:1px solid rgba(207,207,255,.2);background:rgba(255,255,255,.08);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.09)}
+.intro-v2-highlight{background:linear-gradient(95deg,#9FA8FF,#D0A1FF 58%,#F6A8E8);-webkit-background-clip:text;background-clip:text;color:transparent}
+.intro-v2-orb{filter:drop-shadow(0 20px 45px rgba(109,95,235,.27));animation:landing-breathe 6s ease-in-out infinite}
+.intro-v2-glass{border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.10);-webkit-backdrop-filter:blur(20px) saturate(155%);backdrop-filter:blur(20px) saturate(155%);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 12px 30px rgba(7,8,30,.2);transition:background .2s,transform .2s}
+.intro-v2-glass:hover{background:rgba(255,255,255,.19);transform:translateY(-2px)}
+.intro-v2-primary{background:linear-gradient(110deg,#5365FF,#8755F4 60%,#D94AC8);box-shadow:0 12px 30px rgba(103,91,232,.28);transition:transform .2s,filter .2s}
+.intro-v2-primary:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.interview-intro-v2 button:focus-visible{outline:3px solid #DDA0FF;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.intro-v2-orb{animation:none}.intro-v2-glass,.intro-v2-primary{transition:none!important;transform:none!important}}
+
+
+/* Interview V2: immersive focus with legible accessible liquid-glass controls. */
+.interview-session-v2{font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif)}
+.interview-v2-stage{border:1px solid rgba(194,187,255,.26);background:linear-gradient(155deg,rgba(36,48,94,.82),rgba(18,28,63,.89));box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 25px 85px rgba(2,7,27,.33);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.interview-v2-orb{filter:drop-shadow(0 25px 42px rgba(126,88,255,.24))}
+.interview-v2-pill{border:1px solid rgba(191,183,255,.28);background:rgba(116,96,223,.2);color:#D6D2FF}
+.interview-v2-glass,.interview-v2-glass-danger,.interview-v2-primary{border:1px solid rgba(255,255,255,.25);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.14),0 10px 27px rgba(0,0,30,.18);transition:background .2s ease,transform .2s ease,box-shadow .2s ease;color:#F5F3FF}
+.interview-v2-glass{background:rgba(255,255,255,.11)}
+.interview-v2-glass:hover:not(:disabled){background:rgba(255,255,255,.2);transform:translateY(-1px)}
+.interview-v2-primary{background:linear-gradient(110deg,#5365FF,#8755F4 58%,#DB4CCA);color:#fff!important;-webkit-text-fill-color:#fff}
+.interview-v2-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 14px 32px rgba(113,89,233,.32)}
+.interview-v2-primary:disabled{opacity:.72;cursor:not-allowed}
+.interview-v2-glass-danger{border-color:rgba(255,148,171,.35);background:rgba(205,79,112,.15);color:#FFD5E1}
+.interview-v2-glass-danger:hover{background:rgba(205,79,112,.28)}
+.interview-session-v2 button:focus-visible,.interview-session-v2 a:focus-visible{outline:3px solid #DDA0FF;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.interview-v2-glass,.interview-v2-primary,.interview-v2-glass-danger{transition:none!important;transform:none!important}}
+
+
+/* Screen 08 — post-interview processing, light immersive handoff. */
+.analysis-v2{font-family:var(--font-geist-sans,Inter,ui-sans-serif,system-ui,sans-serif)}
+.analysis-v2-gradient{background:linear-gradient(95deg,#5365FF,#9354F4 55%,#E65ECB);-webkit-background-clip:text;background-clip:text;color:transparent}
+.analysis-v2-card{box-shadow:inset 0 1px 0 #fff,0 30px 105px rgba(109,91,190,.15),0 14px 60px rgba(227,103,192,.1)}
+.analysis-v2-ring{animation:analysis-breathe 3.8s ease-in-out infinite}
+.analysis-v2-ring-alt{animation:analysis-breathe 3.8s ease-in-out infinite reverse}
+.analysis-v2-core{animation:analysis-float 4.5s ease-in-out infinite}
+.analysis-v2-live{animation:analysis-breathe 1.4s ease-in-out infinite}
+.analysis-v2-indeterminate{animation:analysis-indeterminate 2s cubic-bezier(.55,.15,.45,.85) infinite}
+@keyframes analysis-breathe{0%,100%{transform:scale(.96);opacity:.5}50%{transform:scale(1.06);opacity:1}}
+@keyframes analysis-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes analysis-indeterminate{from{transform:translateX(-110%)}to{transform:translateX(300%)}}
+.analysis-v2-secondary{border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.75);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 10px 32px rgba(100,88,165,.1)}
+.analysis-v2 button:focus-visible{outline:3px solid #8455E8;outline-offset:4px}
+@media(prefers-reduced-motion:reduce){.analysis-v2-ring,.analysis-v2-ring-alt,.analysis-v2-core,.analysis-v2-live,.analysis-v2-indeterminate{animation:none!important}.analysis-v2-indeterminate{width:100%;opacity:.65}}
