@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { VoicePoweredOrb } from "@/components/ui/voice-powered-orb";
 import { CountdownTimer } from "@/components/ui/countdown-timer";
 import { InterviewAnalysisLoader } from "@/components/ui/interview-analysis-loader";
 import {useEffect,useRef,useState} from "react";
+import { buildReportFromSession, saveLastInterviewReport } from "@/lib/last-interview-report";
 import {ArrowLeft,Mic,Volume2,VolumeX,Pause,Play,Send,Check,AlertTriangle} from "lucide-react";
 type Config={family:"rh"|"technical";locale:"fr"|"en";jobTitle:string;job_description:string;goals:string[];count:number};
 type Response={session_id?:string;question?:{prompt:string};phase?:string;index?:number;total?:number;completed?:boolean;feedback?:string;transcript?:{question:string;answer:string}[];error?:string};
@@ -27,6 +29,7 @@ function segmentInterviewerText(text:string):string[]{
  });
 }
 export default function InterviewPage(){
+ const router=useRouter();
  const [config,setConfig]=useState<Config|null>(null);
  const [configChecked,setConfigChecked]=useState(false);
  useEffect(()=>{
@@ -200,7 +203,20 @@ export default function InterviewPage(){
   try{
    const data=await send("answer",{session_id:session,answer:value.trim()});
    setResult(data);setAnswer("");answerRef.current="";
-   if(data.completed){setState("done");return;}
+   if(data.completed){
+    if(config){
+      const report=buildReportFromSession({
+        feedback:data.feedback||"Bilan indisponible pour cette session.",
+        transcript:data.transcript||[],
+        config:{family:config.family,locale:config.locale,jobTitle:config.jobTitle},
+        status:"completed",
+      });
+      saveLastInterviewReport(report);
+      router.push("/results");
+      return;
+    }
+    setState("done");return;
+   }
    speak(data.question?.prompt||"",config?.locale||"fr");
   }catch(e){
    setState("listening");setError(e instanceof Error?e.message:"Impossible de traiter votre réponse");
@@ -404,7 +420,7 @@ export default function InterviewPage(){
         <button disabled={!answer.trim()||state==="paused"||transcribing||enhancedRecording} onClick={submit} className="interview-v2-primary inline-flex min-h-12 items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold disabled:opacity-70">J’ai terminé <Send size={17}/></button>
        </div>
       </div>}
-     {state==="done"&&<div className="mt-7 w-full rounded-2xl bg-[#EFF8F3] p-6 text-left"><div className="flex items-center gap-2 font-bold text-[#247B64]"><Check size={18}/> Bilan pédagogique non noté</div><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#435C56]">{result?.feedback||"Aucun retour disponible."}</p><p className="mt-3 text-xs text-[#65766F]">Cette session locale n’est pas enregistrée dans Supabase et ne met pas encore à jour le dashboard.</p></div>}
+     {state==="done"&&<div className="mt-7 w-full rounded-2xl bg-[#EFF8F3] p-6 text-left"><div className="flex items-center gap-2 font-bold text-[#247B64]"><Check size={18}/> Bilan pédagogique non noté</div><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#435C56]">{result?.feedback||"Aucun retour disponible."}</p><p className="mt-3 text-xs text-[#65766F]">Ce bilan textuel de Lina n’est pas encore persisté dans Supabase ; ouvrez /results après une session complète pour l’affichage enrichi.</p></div>}
      {error&&<p role="alert" className="mt-5 rounded-xl bg-[#FFF0ED] p-3 text-sm text-[#A64040]"><AlertTriangle size={16} className="mr-2 inline"/>{error}</p>}
     </div>
    </section>
@@ -413,7 +429,20 @@ export default function InterviewPage(){
     <button onClick={togglePause} className="interview-v2-glass inline-flex min-h-12 items-center gap-2 rounded-2xl px-5 py-3 text-sm">{state==="paused"?<Play size={18}/>:<Pause size={18}/>} {state==="paused"?"Reprendre":"Pause"}</button>
     <button onClick={()=>setStopOpen(true)} className="interview-v2-glass-danger min-h-12 rounded-2xl px-5 py-3 text-sm font-semibold">Terminer</button>
    </div>}
-   {stopOpen&&<div role="dialog" aria-modal="true" aria-label="Terminer l’entretien" className="mx-auto mt-5 max-w-md rounded-[24px] border border-[#CEB2DC]/40 bg-[#1C2548] p-6 shadow-2xl"><h3 className="font-bold">Terminer cette séance ?</h3><p className="mt-2 text-sm text-[#CFD6EA]">Les réponses en cours ne pourront pas être conservées et aucun bilan partiel ne sera produit par le laboratoire actuel.</p><div className="mt-5 flex gap-3"><button onClick={()=>setStopOpen(false)} className="interview-v2-glass min-h-11 rounded-2xl px-5 py-2">Continuer</button><button onClick={()=>{stopDictation();stopQuestionAudio();window.speechSynthesis?.cancel();setStopOpen(false);setResult({completed:true,feedback:"Séance interrompue volontairement. Le laboratoire ne permet pas encore de produire ni de conserver un bilan partiel."});setState("done");}} className="interview-v2-glass-danger min-h-11 rounded-2xl px-5 py-2 font-bold">Terminer</button></div></div>}
+   {stopOpen&&<div role="dialog" aria-modal="true" aria-label="Terminer l’entretien" className="mx-auto mt-5 max-w-md rounded-[24px] border border-[#CEB2DC]/40 bg-[#1C2548] p-6 shadow-2xl"><h3 className="font-bold">Terminer cette séance ?</h3><p className="mt-2 text-sm text-[#CFD6EA]">Les réponses en cours ne pourront pas être conservées et aucun bilan partiel ne sera produit par le laboratoire actuel.</p><div className="mt-5 flex gap-3"><button onClick={()=>setStopOpen(false)} className="interview-v2-glass min-h-11 rounded-2xl px-5 py-2">Continuer</button><button onClick={()=>{stopDictation();stopQuestionAudio();window.speechSynthesis?.cancel();setStopOpen(false);const partialFeedback="Séance interrompue volontairement. Lina n’a pas produit de bilan complet pour une interruption anticipée.";
+    if(config){
+      const report=buildReportFromSession({
+        feedback:partialFeedback,
+        transcript:result?.transcript||[],
+        config:{family:config.family,locale:config.locale,jobTitle:config.jobTitle},
+        status:"partial",
+      });
+      saveLastInterviewReport(report);
+      setStopOpen(false);
+      router.push("/results");
+      return;
+    }
+    setResult({completed:true,feedback:partialFeedback});setState("done");}} className="interview-v2-glass-danger min-h-11 rounded-2xl px-5 py-2 font-bold">Terminer</button></div></div>}
    <p className="mt-7 text-center text-xs leading-6 text-[#A9B5D3]">Prototype local : questions issues du corpus brouillon ; reconnaissance vocale selon le navigateur ; aucune évaluation chiffrée.</p>
   </div>
  </main>;

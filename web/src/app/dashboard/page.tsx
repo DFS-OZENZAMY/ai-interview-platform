@@ -10,6 +10,7 @@ import { getAppRole, readProfile } from "@/lib/profile";
 import { employmentOptions, professionalOptions, type OnboardingProfile, type ProfessionalGoal, type PreparationGoal } from "@/components/ui/onboarding-stages";
 import { InterviewScoreGauge } from "@/components/ui/interview-score-gauge";
 import { readInterviewResults, comparableProgress, type InterviewResult } from "@/lib/interview-results";
+import { readLastInterviewReport, type LastInterviewReport } from "@/lib/last-interview-report";
 
 const goalNames = Object.fromEntries(professionalOptions.map(item => [item.value,item.title])) as Record<ProfessionalGoal,string>;
 const priorityNames: Record<PreparationGoal,string> = { confidence:"Confiance en soi", answer_structure:"Structure des réponses", communication:"Communication",domain_knowledge:"Connaissances métier",stress_management:"Gestion du stress" };
@@ -25,7 +26,10 @@ export default function DashboardPage() {
  const [profile,setProfile]=useState<OnboardingProfile | null | undefined>(undefined);
  const [loadError,setLoadError]=useState("");
  const [results,setResults]=useState<InterviewResult[]>([]);
+ const [localReport,setLocalReport]=useState<LastInterviewReport|null>(null);
  useEffect(()=>{
+   setLocalReport(readLastInterviewReport());
+
    let active=true;
    async function load(){
      try {
@@ -47,8 +51,12 @@ export default function DashboardPage() {
  async function signOut(){const client=getAuthClient();await client?.auth.signOut();router.replace("/login");router.refresh();}
  const motionIn=(delay:number)=>({initial:reducedMotion?false as const:{opacity:0,y:24},animate:{opacity:1,y:0},transition:{duration:.56,delay,ease:"easeOut" as const}});
  const trend=comparableProgress(results);
- const coach=results.find(r=>r.coach_priority&&r.coach_recommendation);
- const hasHistory=results.length>0;
+ const dbCoach=results.find(r=>r.coach_priority&&r.coach_recommendation);
+ const coach=dbCoach??(localReport?.coach_priority&&localReport?.coach_recommendation?{
+   coach_priority:localReport.coach_priority,
+   coach_recommendation:localReport.coach_recommendation,
+ }:undefined);
+ const hasHistory=results.length>0||Boolean(localReport);
  const hasSeveral=results.length>1;
  const actionTitle=!hasHistory?"Votre premier entretien commence ici.":hasSeveral&&coach?"Travaillez votre prochain objectif.":"Continuez votre préparation.";
  const actionBody=!hasHistory?"Entraînez-vous en entretien RH ou technique, avec des questions adaptées à votre objectif.":coach?`Votre prochain défi : ${coach.coach_priority}. Retrouvez vos objectifs dans une nouvelle simulation.`:"Chaque entretien est une occasion de progresser. Configurez votre prochaine séance.";
@@ -129,6 +137,7 @@ export default function DashboardPage() {
           <motion.section {...motionIn(.12)} className={panel+" p-6"}>
            <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-xl bg-[#E5DFFF] text-[#7258C4]"><BrainCircuit size={19}/></span><div><h2 className="text-base font-bold">Lina, votre coach IA</h2><p className="text-[11px] text-[#8B91A5]">Accompagnement personnalisé</p></div></div>
            <div className="mt-5 rounded-2xl bg-[linear-gradient(135deg,#F4EDFF,#FDE8F5)] p-5"><div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/85 px-3 py-1.5 text-[11px] font-bold text-[#7456BA]"><Sparkles size={14}/> {coach?"Recommandation personnalisée":"Votre prochaine étape"}</div><h3 className="text-base font-bold leading-6">{coach?.coach_priority??"Commencez par une simulation."}</h3><p className="mt-3 text-xs leading-6 text-[#626D8A]">{coach?.coach_recommendation??(hasHistory?"Vos conseils personnalisés apparaîtront après l’analyse de vos réponses.":"Votre coach analysera vos réponses pour identifier vos points forts et les compétences à développer.")}</p></div>
+            {localReport&&<Link href="/results" className="mt-4 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-[#3656C3] hover:underline">Relire le dernier bilan de Lina <ArrowRight size={16}/></Link>}
           </motion.section>
           <motion.section {...motionIn(.2)} className={panel+" p-6"}>
            <div className="flex items-center justify-between"><h2 className="text-base font-bold">Score de préparation</h2><Target size={19} className="text-[#3C68C9]"/></div>
@@ -149,7 +158,7 @@ export default function DashboardPage() {
          <p className="mt-1 text-xs leading-6 text-[#73819A]">Vos dernières séances, sans notes inventées.</p>
          <div className="mt-4 divide-y divide-[#E5EAF4]">{results.slice(0,5).map(r=><div key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-4"><div><p className="text-sm font-bold">{r.interview_kind==="rh"?"Entretien RH":"Entretien technique"}{r.job_title?` · ${r.job_title}`:""}</p><p className="mt-1 text-xs text-[#6D7D98]">{new Date(r.completed_at).toLocaleDateString("fr-FR")} · {r.status==="partial"?"Bilan partiel":"Terminé"}</p></div><span className="rounded-xl bg-[#EFF3FC] px-3 py-2 text-xs font-semibold text-[#5267A0]">{r.score===null?"Non noté":`${r.score}/100`}</span></div>)}</div>
         </motion.section>}
-        <p className="mt-8 flex items-center gap-2 text-xs leading-6 text-[#8390A6]"><BookOpen size={15}/> Données réelles uniquement : les résultats et l’historique apparaîtront après intégration des simulations.</p>
+        <p className="mt-8 flex items-center gap-2 text-xs leading-6 text-[#8390A6]"><BookOpen size={15}/> Les bilans Lina de la session en cours sont visibles via « Relire le dernier bilan ». La persistance Supabase des scores reste une étape ultérieure.</p>
        </>}
      </div>
     </div>
