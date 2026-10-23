@@ -70,6 +70,8 @@ const api = createApp({
   TTS: createTtsProvider(env),
   AGENTS: loadAgents(env),
   ADMIN_EMAILS: env.ADMIN_EMAILS,
+  SUPABASE_URL: env.SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY: env.SUPABASE_PUBLISHABLE_KEY,
   COACH_INVITE_CODE: env.COACH_INVITE_CODE,
   COOKIE_SECURE: env.COOKIE_SECURE ? env.COOKIE_SECURE !== "false" : !!(env.PUBLIC_URL || "").startsWith("https"),
   RUNTIME: env.RUNTIME_LABEL || "node",

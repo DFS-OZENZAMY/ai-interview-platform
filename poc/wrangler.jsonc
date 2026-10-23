@@ -3,7 +3,7 @@
   "name": "ai-interview-platform",
   "main": "server/hosts/cloudflare.js",
   "compatibility_date": "2026-09-01",
-  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"], "not_found_handling": "single-page-application" },
   // Production : base D1 créée automatiquement au premier déploiement.
   "d1_databases": [{ "binding": "DB", "database_name": "ai-interview-poc" }],
   "ai": { "binding": "AI" },

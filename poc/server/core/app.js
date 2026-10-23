@@ -20,6 +20,7 @@ import { validateProfile, suggestedSkills, PROFILE_VERSION } from "./profile-con
 import { planSlots, relaxations, candidateUuid, CATEGORY_LABELS } from "../questions/index.js";
 import { publicAgent, STYLE_PRESETS } from "../agents.js";
 import { cleanGoals, TECH_DOMAINS, RH_GOALS, TECH_GOALS_GENERAL } from "../questions/goals.js";
+import { labRoute, LAB_SCHEMA } from "../lab.js";
 
 const SESSION_DAYS = 7;
 const PBKDF2_ITER = 100000;
@@ -53,7 +54,7 @@ export const SCHEMA = [
 ];
 let schemaReady = null;
 function ensureSchema(env) {
-  if (!schemaReady) schemaReady = env.DB.ensureSchema(SCHEMA).catch((e) => { schemaReady = null; throw e; });
+  if (!schemaReady) schemaReady = env.DB.ensureSchema([...SCHEMA, ...LAB_SCHEMA]).catch((e) => { schemaReady = null; throw e; });
   return schemaReady;
 }
 
@@ -551,22 +552,23 @@ async function deleteAgent(user, env, id) {
 const TTS_MAX_CHARS = 500, TTS_WINDOW_MS = 5 * 60 * 1000, TTS_MAX_PER_WINDOW = 60, TTS_CACHE_MAX = 120, TTS_CACHE_BYTES = 3 * 1024 * 1024;
 const ttsCache = new Map(), ttsHits = new Map();
 async function textToSpeech(url, user, env, ctx) {
+  return speakText(env, ctx, url.searchParams.get("text"), url.searchParams.get("lang") === "en" ? "en" : "fr", url.searchParams.get("agent"), "u:" + user.id);
+}
+/** Synthèse commune (plateforme et laboratoire d'Achraf) : voix de l'agent choisie par le serveur, cache, limite de débit. */
+async function speakText(env, ctx, rawText, lang, agentId, rateKey) {
   if (!env.TTS) throw new HttpError(404, "tts_unavailable", "Synthèse vocale serveur non configurée.");
-  const lang = url.searchParams.get("lang") === "en" ? "en" : "fr";
   if (!env.TTS.languages.includes(lang)) throw new HttpError(404, "tts_unavailable", "Langue non disponible pour la voix serveur.");
-  const text = String(url.searchParams.get("text") || "").replace(/\s+/g, " ").trim();
+  const text = String(rawText || "").replace(/\s+/g, " ").trim();
   if (!text || text.length > TTS_MAX_CHARS) throw new HttpError(400, "bad_text", "Texte vide ou trop long.");
-  const t = Date.now(), recent = (ttsHits.get(user.id) || []).filter((x) => t - x < TTS_WINDOW_MS);
-  if (recent.length >= TTS_MAX_PER_WINDOW) throw new HttpError(429, "too_many_requests", "Trop de demandes de voix. Réessayez dans quelques minutes.");
-  recent.push(t); ttsHits.set(user.id, recent);
-  const headers = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
-  // Voix de l'agent choisi : identifiant validé contre le catalogue serveur (le navigateur ne fournit jamais d'ID de voix).
-  const agents = await allAgents(env), agent = agents.find((a) => a.id === url.searchParams.get("agent")) || agents[0] || null;
+  const headers = { "content-type": env.TTS.contentType || "audio/wav", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
+  const agents = await allAgents(env), agent = agents.find((a) => a.id === agentId) || agents[0] || null;
   if (env.TTS.perAgentVoice && !agent) throw new HttpError(503, "tts_unavailable", "Aucun agent vocal configuré.");
-  headers["content-type"] = env.TTS.contentType || "audio/wav";
   const voice = env.TTS.perAgentVoice ? voiceFor(await agentVoiceMap(env), agent, lang).id : null;
   const key = (env.TTS.perAgentVoice ? agent.id + ":" + voice + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
   if (hit) { ttsCache.delete(key); ttsCache.set(key, hit); return new Response(hit, { headers: { ...headers, "x-tts-cache": "hit" } }); }
+  const t = Date.now(), recent = (ttsHits.get(rateKey) || []).filter((x) => t - x < TTS_WINDOW_MS);
+  if (recent.length >= TTS_MAX_PER_WINDOW) throw new HttpError(429, "too_many_requests", "Trop de demandes de voix. Réessayez dans quelques minutes.");
+  recent.push(t); ttsHits.set(rateKey, recent);
   let up;
   try { up = await env.TTS.synthesize(text, lang, env.TTS.perAgentVoice ? { voice } : {}); }
   catch (e) { console.error("tts_error", e && e.message); throw new HttpError(503, "tts_unavailable", "La voix de Lina est momentanément indisponible."); }
@@ -654,6 +656,10 @@ async function route(req, env, url, ctx) {
   }
   if (!env.DB) throw new HttpError(503, "db_unavailable", "Base de données non configurée.");
   await ensureSchema(env);
+
+  // Laboratoire S2-04 d'Achraf (son interface, son API) + voix de Lina
+  const lab = await labRoute(req, env, url, { body, speak: (text, lang, agentId, ip) => speakText(env, ctx, text, lang, agentId, "ip:" + ip) });
+  if (lab) return lab;
 
   if (p === "/api/auth/register" && m === "POST") return register(req, env);
   if (p === "/api/auth/login" && m === "POST") return login(req, env);

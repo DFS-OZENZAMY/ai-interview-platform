@@ -68,6 +68,21 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
 
+## Interface et simulateur d’Achraf (page d’accueil de la plateforme)
+
+**La plateforme affiche l’application d’Achraf** (`dev/new-user-e2e`) : même thème, mêmes 7 étapes (Accueil, Compte, Onboarding, Profil, Simulation, Entretien, Récapitulatif), mêmes textes, même code. Fichiers : `poc/public/index.html` et `poc/public/app.js`. Différences avec son original, et seulement celles-ci :
+
+1. **La voix de Lina** (seul ajout demandé) : sous chaque question, Lina lit la question puis chaque relance ; boutons « Réécouter Lina » et « Couper la voix de Lina ». Le serveur ne synthétise que des textes qu’il connaît (`/api/lab/tts` : question en cours d’une session, ou question du référentiel par son code) : impossible de lui faire dire autre chose. Voix ElevenLabs de Lina (réglable dans `/classique/` › Voix), sinon voix du navigateur.
+2. Chemin du script (`/app.js` au lieu de `/e2e/app.js`), libellés des fournisseurs IA (Groq, OpenAI, Workers AI, Anthropic) et mention « dans Cloudflare » au lieu de « sur votre Mac ».
+
+**Son simulateur tourne sur le serveur de la plateforme** (`poc/server/lab.js`), qui reprend l’API de son serveur local et la logique de son `InterviewLab` : `/api/e2e/config`, `/api/ai/status`, `/api/questions`, `/api/ai/session/start`, `/api/ai/session/answer`, avec les mêmes validations, la même sélection des questions, les mêmes phases et les mêmes consignes IA. Adaptations imposées par l’hébergement : sessions en base (1 h) au lieu de la mémoire du processus Python, 30 simulations par heure et par adresse IP, requêtes d’un autre site refusées.
+
+**Variables Cloudflare :** `QUESTION_SOURCE=corpus-preview` ; IA : secret `GROQ_API_KEY` (sinon Workers AI) ; voix de Lina : secret `ELEVENLABS_API_KEY` ; parcours Supabase réel (son bouton « Activer le parcours réel ») : `SUPABASE_URL` et `SUPABASE_PUBLISHABLE_KEY` (clé publique de son projet).
+
+**Ancienne interface** (studio, recruteurs, coachs, écran Voix) : toujours disponible à `/classique/`, non liée depuis la page d’accueil.
+
+**Preuves :** ses 5 tests navigateur (`tests/e2e`) passent **sans modification** contre le serveur de la plateforme (`poc/tests/run_achraf_e2e_on_platform.py`) ; `poc/tests/lab_api_test.py` 19/19 sur Node et Cloudflare Workers (contrat, validations identiques, voix de Lina, sécurité) ; parcours navigateur complet avec Lina ; non-régression 73/73.
+
 ## Moteur de simulation S2-04 d’Achraf, intégré à la plateforme
 
 Le laboratoire local d’Achraf (`dev/local-preview/ai_interview.py`, Python, en mémoire, sur son poste) est porté dans la plateforme en ligne, sans modifier son code :

@@ -32,3 +32,6 @@ export function corpusPreview({ random = Math.random } = {}) {
     async complete() {},
   };
 }
+
+/** Questions au format de l'API locale d'Achraf (public_question / preview_question) : jamais d'attendus ni de barème. */
+export const corpusItems = () => SAFE;
