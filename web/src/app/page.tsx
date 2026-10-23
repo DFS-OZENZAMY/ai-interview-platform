@@ -131,7 +131,7 @@ export default function Home() {
           <Link href="/login" className="landing-primary-btn inline-flex min-h-[58px] shrink-0 items-center gap-3 rounded-2xl px-7 text-sm font-bold text-white">C’est parti <MoveUpRight size={19}/></Link>
         </div>
       </section>
-      <footer className="mx-auto flex max-w-[1240px] flex-col justify-between gap-3 px-5 py-9 text-xs text-[#7B85A0] sm:flex-row sm:px-10"><span>© {new Date().getFullYear()} InterviewLab · Votre coach d’entretien IA</span><span>Un outil d’entraînement, pas une décision de recrutement.</span></footer>
+      <footer className="mx-auto flex max-w-[1240px] flex-col justify-between gap-3 px-5 py-9 text-xs text-[#7B85A0] sm:flex-row sm:px-10"><span>© 2026 InterviewLab · Votre coach d’entretien IA</span><span>Un outil d’entraînement, pas une décision de recrutement.</span></footer>
     </main>
   );
 }

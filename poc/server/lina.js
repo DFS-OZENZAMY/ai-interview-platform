@@ -46,7 +46,12 @@ export const CONFIDENT = new Set(["repeat", "clarify", "smalltalk", "abusive", "
 export function detectIntent(text) {
   const n = norm(text).trim(), w = words(text);
   if (!n) return "nonsense";
-  if (RX.injection.test(n)) return "injection";
+  // Manipulation : recadrage seulement si le message n'est QUE ça. Mêlée à une vraie réponse, on garde la réponse
+  // (le modèle la reçoit comme donnée non fiable et ignore l'injonction), comme le ferait une recruteuse humaine.
+  if (RX.injection.test(n)) {
+    const rest = n.replace(RX.injection, " ").replace(/\b(et|and|s'il (te|vous) plait|please)\b/g, " ");
+    if (words(rest) < 8) return "injection";
+  }
   if (RX.abusive.test(n)) return "abusive";
   if (w <= 14 && RX.stop.test(n)) return "stop";
   if (w <= 10 && RX.skip.test(n)) return "skip";
@@ -88,6 +93,11 @@ function answerCandidateQuestion(n, ctx, fr, seed) {
  * @returns { reply, action } action ∈ "stay" | "next" | "end"
  */
 export function linaReply(intent, text, ctx) {
+  const r = linaReplyRaw(intent, text, ctx);
+  if (r.reply) r.reply = r.reply.charAt(0).toUpperCase() + r.reply.slice(1);   // « Pas d’inquiétude… » même sans prénom
+  return r;
+}
+function linaReplyRaw(intent, text, ctx) {
   const fr = ctx.locale !== "en", q = ctx.question, seed = (text || "").length + (ctx.count || 0) * 7 + (ctx.index || 0);
   const hi = ctx.name ? (fr ? `${ctx.name}, ` : `${ctx.name}, `) : "";
   const n = norm(text);

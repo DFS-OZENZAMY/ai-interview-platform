@@ -321,7 +321,7 @@ export default function InterviewPage(){
    <p className="text-xs font-semibold uppercase tracking-[.26em] text-[#AEBEF8]">AI Interview Platform</p>
    <p className="mt-3 text-sm text-[#B8C8E8]">{introStage==="welcome"||introStage==="breathing"?"Préparons votre entretien":"Vous entrez dans votre entretien"}</p>
    <div className="my-8 size-64 sm:size-80"><VoicePoweredOrb state={introStage==="welcome"?"speaking":"thinking"} voiceLevel={introStage==="welcome"?.25+.13*Math.sin(introReveal*1.6):.05} className="h-full w-full"/></div>
-   {introStage==="welcome"&&<audio ref={introAudio} preload="auto" src={config?.locale==="en"?"/audio/interview-intro-en.mp3":"/audio/interview-intro-fr.mp3"}
+   {introStage==="welcome"&&<audio ref={introAudio} preload="auto" src={"/api/interview/tts?"+new URLSearchParams({text:introLine,locale:config?.locale==="en"?"en":"fr"}).toString()} data-fallback={config?.locale==="en"?"/audio/interview-intro-en.mp3":"/audio/interview-intro-fr.mp3"}
     onPlay={()=>{
      setIntroNotice("");
      if(introInterval.current)clearInterval(introInterval.current);
@@ -334,7 +334,9 @@ export default function InterviewPage(){
      },120);
     }}
     onEnded={finishIntroduction}
-    onError={()=>setIntroNotice("Le fichier audio n’a pas pu être chargé. Vérifiez le navigateur ou continuez sans audio.")}/>}
+    onError={e=>{const a=e.currentTarget,f=a.dataset.fallback;   // voix de Lina indisponible : enregistrement d'origine
+     if(f&&!a.src.endsWith(f)){a.src=f;void a.play().catch(()=>{});return;}
+     setIntroNotice("Le fichier audio n’a pas pu être chargé. Vérifiez le navigateur ou continuez sans audio.");}}/>}
    <div className={`relative flex min-h-36 w-full items-center justify-center transition-all duration-500 ${introStage==="transition"?"translate-y-3 opacity-0":"translate-y-0 opacity-100"}`}>
     {(introStage==="welcome"||introStage==="breathing")?
      <h1 aria-label={introLine} className="flex max-w-3xl flex-col items-center gap-3 text-balance text-center text-2xl font-semibold leading-snug tracking-[-.035em] sm:text-4xl">
