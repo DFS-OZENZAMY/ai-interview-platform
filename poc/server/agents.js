@@ -41,5 +41,13 @@ export function loadAgents(cfg = {}) {
   for (const a of agents) { const v = cfg["ELEVENLABS_VOICE_" + a.id.toUpperCase()]; if (v) a.voice = v; }
   return agents.filter((a) => /^[A-Za-z0-9]{8,40}$/.test(a.voice || ""));
 }
+/** Styles de relance proposés pour les recruteurs créés depuis l'écran « Voix ». */
+export const STYLE_PRESETS = {
+  lina: { label: "Bienveillant", style: DEFAULT_AGENTS[0].style, strictness: 1 },
+  karim: { label: "Exigeant et technique", style: DEFAULT_AGENTS[1].style, strictness: 3 },
+  sofia: { label: "Pressé, sous tension", style: DEFAULT_AGENTS[2].style, strictness: 3 },
+  adam: { label: "Pédagogue (méthode STAR)", style: DEFAULT_AGENTS[3].style, strictness: 2 },
+};
 /** Informations publiques (sans identifiant de voix) pour l'interface. */
-export const publicAgent = (a) => ({ id: a.id, name: a.name, title: a.title, description: a.description, color: a.color, greeting: a.greeting, strictness: a.strictness });
+export const publicAgent = (a, voices = {}) => ({ id: a.id, name: a.name, title: a.title, description: a.description, color: a.color, greeting: a.greeting, strictness: a.strictness,
+  followupStyle: a.followupStyle || a.id, custom: !!a.custom, voices });

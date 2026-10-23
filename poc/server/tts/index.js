@@ -77,8 +77,18 @@ function elevenLabsTts(cfg) {
       throw new Error("tts_http_" + last);
     },
     /* Administration des voix (écran « Voix des recruteurs ») */
-    async library({ gender, search, page = 0 } = {}) {
-      const q = new URLSearchParams({ language: "fr", page_size: "24", page: String(page) });
+    /** Accents réellement présents dans la bibliothèque pour une langue (liste découverte chez ElevenLabs). */
+    async accents(language = "fr") {
+      const q = new URLSearchParams({ language, page_size: "100" });
+      const r = await api(`/v1/shared-voices?${q}`);
+      if (!r.ok) throw new Error("library_http_" + r.status);
+      const count = {};
+      for (const v of (await r.json()).voices || []) if (v.accent) count[v.accent] = (count[v.accent] || 0) + 1;
+      return Object.entries(count).sort((a, b) => b[1] - a[1]).map(([accent, n]) => ({ accent, n }));
+    },
+    async library({ gender, search, page = 0, language = "fr", accent } = {}) {
+      const q = new URLSearchParams({ language, page_size: "24", page: String(page) });
+      if (accent) q.set("accent", String(accent).slice(0, 40));
       if (gender === "male" || gender === "female") q.set("gender", gender);
       if (search) q.set("search", String(search).slice(0, 60));
       const r = await api(`/v1/shared-voices?${q}`);

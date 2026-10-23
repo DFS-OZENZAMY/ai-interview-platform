@@ -18,7 +18,7 @@
 
 import { validateProfile, suggestedSkills, PROFILE_VERSION } from "./profile-contract.js";
 import { planSlots, relaxations, candidateUuid, CATEGORY_LABELS } from "../questions/index.js";
-import { publicAgent } from "../agents.js";
+import { publicAgent, STYLE_PRESETS } from "../agents.js";
 
 const SESSION_DAYS = 7;
 const PBKDF2_ITER = 100000;
@@ -43,6 +43,10 @@ export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS candidate_profiles (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, version TEXT NOT NULL, data TEXT NOT NULL, seniority TEXT NOT NULL, target_job TEXT NOT NULL, completed_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS catalog_links (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, source TEXT NOT NULL, catalog_ref TEXT NOT NULL, slots TEXT NOT NULL, asked INTEGER NOT NULL DEFAULT 0, turns TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL CHECK (status IN ('active','done')), created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS agent_voices (agent_id TEXT PRIMARY KEY, voice_id TEXT NOT NULL, voice_name TEXT NOT NULL, source TEXT NOT NULL, updated_by TEXT, updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS agent_voice_map (agent_id TEXT NOT NULL, lang TEXT NOT NULL, voice_id TEXT NOT NULL, voice_name TEXT NOT NULL, accent TEXT NOT NULL DEFAULT '', source TEXT NOT NULL, updated_by TEXT, updated_at TEXT NOT NULL, PRIMARY KEY (agent_id, lang))`,
+  `INSERT INTO agent_voice_map (agent_id, lang, voice_id, voice_name, accent, source, updated_by, updated_at) SELECT agent_id, 'fr', voice_id, voice_name, '', source, updated_by, updated_at FROM agent_voices WHERE true ON CONFLICT DO NOTHING`,
+  `DELETE FROM agent_voices`,   // migration faite une seule fois : une voix retirée ne doit pas revenir au redémarrage
+  `CREATE TABLE IF NOT EXISTS custom_agents (id TEXT PRIMARY KEY, name TEXT NOT NULL, title TEXT NOT NULL, description TEXT NOT NULL, color TEXT NOT NULL, preset TEXT NOT NULL, greeting_fr TEXT NOT NULL, greeting_en TEXT NOT NULL, created_by TEXT, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS audit_events (id TEXT PRIMARY KEY, actor_user_id TEXT, action TEXT NOT NULL, entity_type TEXT, entity_id TEXT, occurred_at TEXT NOT NULL)`,
 ];
 let schemaReady = null;
@@ -447,39 +451,92 @@ async function finishCatalogInterview(req, user, env) {
 /* Administration : comptes listés dans ADMIN_EMAILS */
 const isAdmin = (user, env) => !!user && String(env.ADMIN_EMAILS || "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean).includes(user.email);
 function needAdmin(user, env) { need(user); if (!isAdmin(user, env)) throw new HttpError(403, "forbidden", "Réservé à l’administrateur de la plateforme."); return user; }
-let voiceMemo = { at: 0, map: new Map() };
-async function agentVoiceMap(env) {
-  if (Date.now() - voiceMemo.at < 30000) return voiceMemo.map;
-  const { results } = await env.DB.prepare("SELECT agent_id, voice_id, voice_name FROM agent_voices").all();
-  voiceMemo = { at: Date.now(), map: new Map(results.map((r) => [r.agent_id, r])) };
-  return voiceMemo.map;
+let voiceMemo = { at: 0, map: new Map(), custom: [] };
+/** Voix attribuées (clé « agent|langue ») et recruteurs créés, relus au plus toutes les 30 s. */
+async function voiceState(env) {
+  if (Date.now() - voiceMemo.at < 30000) return voiceMemo;
+  const [v, c] = await env.DB.batch([
+    env.DB.prepare("SELECT agent_id, lang, voice_id, voice_name, accent FROM agent_voice_map"),
+    env.DB.prepare("SELECT * FROM custom_agents ORDER BY created_at"),
+  ]);
+  voiceMemo = { at: Date.now(), map: new Map(v.results.map((r) => [r.agent_id + "|" + r.lang, r])), custom: c.results };
+  return voiceMemo;
 }
+const agentVoiceMap = async (env) => (await voiceState(env)).map;
+/** Catalogue complet : recruteurs intégrés + recruteurs créés par l'administrateur. */
+async function allAgents(env) {
+  const base = env.AGENTS || [], st = env.DB ? await voiceState(env) : { custom: [] };
+  return [...base, ...st.custom.map((c) => {
+    const preset = STYLE_PRESETS[c.preset] || STYLE_PRESETS.lina, model = base.find((a) => a.id === c.preset) || base[0] || {};
+    return { id: c.id, name: c.name, title: c.title, description: c.description, color: c.color, custom: true, followupStyle: c.preset,
+      style: preset.style, strictness: preset.strictness, greeting: { fr: c.greeting_fr, en: c.greeting_en }, voice: model.voice };
+  })];
+}
+/** Voix d'un recruteur pour une langue : voix attribuée pour cette langue, sinon celle du français, sinon voix par défaut. */
+function voiceFor(map, agent, lang) {
+  const m = map.get(agent.id + "|" + lang) || map.get(agent.id + "|fr");
+  return m ? { id: m.voice_id, name: m.voice_name, accent: m.accent } : { id: agent.voice, name: "Voix par défaut", accent: "" };
+}
+const voicesSummary = (map, agent) => Object.fromEntries(["fr", "en"].map((l) => { const m = map.get(agent.id + "|" + l); return [l, m ? { name: m.voice_name, accent: m.accent } : null]; }));
+const accentCache = new Map();
 async function adminVoices(url, user, env) {
   needAdmin(user, env);
   if (!env.TTS || !env.TTS.library) throw new HttpError(409, "elevenlabs_required", "Configurez ElevenLabs (TTS_PROVIDER=elevenlabs et ELEVENLABS_API_KEY).");
   const map = await agentVoiceMap(env);
-  const agents = (env.AGENTS || []).map((a) => ({ id: a.id, name: a.name, title: a.title, color: a.color, voiceName: map.get(a.id)?.voice_name || "Voix par défaut", custom: map.has(a.id) }));
+  const language = /^[a-z]{2}$/.test(url.searchParams.get("language") || "") ? url.searchParams.get("language") : "fr";
+  const agents = (await allAgents(env)).map((a) => ({ id: a.id, name: a.name, title: a.title, color: a.color, custom: !!a.custom, voices: voicesSummary(map, a) }));
   try {
-    const lib = await env.TTS.library({ gender: url.searchParams.get("gender"), search: url.searchParams.get("search"), page: Math.max(0, parseInt(url.searchParams.get("page") || "0", 10) || 0) });
-    return json({ agents, model: env.TTS.model, ...lib });
+    let accents = accentCache.get(language);
+    if (!accents || Date.now() - accents.at > 3600000) { accents = { at: Date.now(), list: await env.TTS.accents(language) }; accentCache.set(language, accents); }
+    const lib = await env.TTS.library({ language, accent: url.searchParams.get("accent") || "", gender: url.searchParams.get("gender"), search: url.searchParams.get("search"), page: Math.max(0, parseInt(url.searchParams.get("page") || "0", 10) || 0) });
+    return json({ agents, model: env.TTS.model, language, accents: accents.list, presets: Object.fromEntries(Object.entries(STYLE_PRESETS).map(([k, v]) => [k, v.label])), ...lib });
   } catch (e) { console.error("library_error", e && e.message); throw new HttpError(503, "library_unavailable", "Bibliothèque ElevenLabs indisponible (clé, quota ou réseau)."); }
 }
 async function assignVoice(req, user, env, agentId) {
   needAdmin(user, env);
-  const agent = (env.AGENTS || []).find((a) => a.id === agentId);
+  const agent = (await allAgents(env)).find((a) => a.id === agentId);
   if (!agent) throw new HttpError(404, "not_found", "Recruteur introuvable.");
   const b = await body(req);
-  if (b.reset) { await env.DB.prepare("DELETE FROM agent_voices WHERE agent_id = ?").bind(agentId).run(); voiceMemo.at = 0; return json({ ok: true, voiceName: "Voix par défaut" }); }
-  const name = String(b.name || "Voix").slice(0, 50);
+  const lang = b.lang === "en" ? "en" : "fr";
+  if (b.reset) { await env.DB.prepare("DELETE FROM agent_voice_map WHERE agent_id = ? AND lang = ?").bind(agentId, lang).run(); voiceMemo.at = 0; return json({ ok: true }); }
+  const name = String(b.name || "Voix").slice(0, 50), accent = String(b.accent || "").slice(0, 40);
   let voiceId;
-  try { voiceId = await env.TTS.addShared(String(b.ownerId || ""), String(b.voiceId || ""), `Répétition · ${agent.name} · ${name}`); }
+  try { voiceId = await env.TTS.addShared(String(b.ownerId || ""), String(b.voiceId || ""), `Répétition · ${agent.name} · ${lang.toUpperCase()} · ${name}`); }
   catch (e) { console.error("add_voice_error", e && e.message); throw new HttpError(503, "add_voice_failed", "ElevenLabs a refusé l’ajout de cette voix (limite de voix du forfait ?)."); }
-  await env.DB.prepare(`INSERT INTO agent_voices (agent_id, voice_id, voice_name, source, updated_by, updated_at) VALUES (?,?,?,?,?,?)
-    ON CONFLICT(agent_id) DO UPDATE SET voice_id = excluded.voice_id, voice_name = excluded.voice_name, source = excluded.source, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
-    .bind(agentId, voiceId, name, "library", user.id, now()).run();
+  await env.DB.prepare(`INSERT INTO agent_voice_map (agent_id, lang, voice_id, voice_name, accent, source, updated_by, updated_at) VALUES (?,?,?,?,?,?,?,?)
+    ON CONFLICT(agent_id, lang) DO UPDATE SET voice_id = excluded.voice_id, voice_name = excluded.voice_name, accent = excluded.accent, source = excluded.source, updated_by = excluded.updated_by, updated_at = excluded.updated_at`)
+    .bind(agentId, lang, voiceId, name, accent, "library", user.id, now()).run();
   voiceMemo.at = 0;
   await audit(env, user.id, "assign_agent_voice", "agent", agentId);
-  return json({ ok: true, voiceName: name });
+  return json({ ok: true, voiceName: name, lang, accent });
+}
+const COLOR_OK = /^#[0-9a-fA-F]{6}$/;
+async function createAgent(req, user, env) {
+  needAdmin(user, env);
+  const b = await body(req);
+  const name = clip(b.name, 30).trim(), title = clip(b.title, 60).trim(), description = clip(b.description, 200).trim();
+  if (name.length < 2 || title.length < 3) throw new HttpError(400, "invalid_agent", "Indiquez au moins un prénom et un rôle.");
+  const preset = STYLE_PRESETS[b.preset] ? b.preset : "lina";
+  const color = COLOR_OK.test(b.color || "") ? b.color : "#2E6B64";
+  const all = await allAgents(env);
+  if (all.length >= 24) throw new HttpError(409, "too_many_agents", "24 recruteurs au maximum.");
+  let id = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 20) || "agent";
+  while (all.some((a) => a.id === id)) id = id.slice(0, 16) + "-" + Math.random().toString(36).slice(2, 5);
+  const fr = clip(b.greetingFr, 200).trim() || `Bonjour, je suis ${name}, ${title.charAt(0).toLowerCase() + title.slice(1)}. Commençons.`;
+  const en = clip(b.greetingEn, 200).trim() || `Hello, I'm ${name}. Let's begin.`;
+  await env.DB.prepare("INSERT INTO custom_agents (id, name, title, description, color, preset, greeting_fr, greeting_en, created_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)")
+    .bind(id, name, title, description || STYLE_PRESETS[preset].label, color, preset, fr, en, user.id, now()).run();
+  voiceMemo.at = 0;
+  await audit(env, user.id, "create_agent", "agent", id);
+  return json({ ok: true, id }, 201);
+}
+async function deleteAgent(user, env, id) {
+  needAdmin(user, env);
+  const r = await env.DB.prepare("DELETE FROM custom_agents WHERE id = ?").bind(id).run();
+  if (!(r.meta && r.meta.changes)) throw new HttpError(404, "not_found", "Seuls les recruteurs créés peuvent être supprimés.");
+  await env.DB.prepare("DELETE FROM agent_voice_map WHERE agent_id = ?").bind(id).run();
+  voiceMemo.at = 0;
+  return json({ ok: true });
 }
 
 /* Voix de Lina : synthèse Pocket TTS relayée, avec cache et limite de débit */
@@ -496,15 +553,13 @@ async function textToSpeech(url, user, env, ctx) {
   recent.push(t); ttsHits.set(user.id, recent);
   const headers = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
   // Voix de l'agent choisi : identifiant validé contre le catalogue serveur (le navigateur ne fournit jamais d'ID de voix).
-  const agents = env.AGENTS || [], agent = agents.find((a) => a.id === url.searchParams.get("agent")) || agents[0] || null;
+  const agents = await allAgents(env), agent = agents.find((a) => a.id === url.searchParams.get("agent")) || agents[0] || null;
   if (env.TTS.perAgentVoice && !agent) throw new HttpError(503, "tts_unavailable", "Aucun agent vocal configuré.");
   headers["content-type"] = env.TTS.contentType || "audio/wav";
-  const vmap = env.TTS.perAgentVoice ? await agentVoiceMap(env) : null;
-  const key = (env.TTS.perAgentVoice ? agent.id + ":" + (vmap.get(agent.id)?.voice_id || agent.voice) + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
+  const voice = env.TTS.perAgentVoice ? voiceFor(await agentVoiceMap(env), agent, lang).id : null;
+  const key = (env.TTS.perAgentVoice ? agent.id + ":" + voice + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
   if (hit) { ttsCache.delete(key); ttsCache.set(key, hit); return new Response(hit, { headers: { ...headers, "x-tts-cache": "hit" } }); }
   let up;
-  let voice = agent && agent.voice;
-  if (env.TTS.perAgentVoice) { const custom = (await agentVoiceMap(env)).get(agent.id); if (custom) voice = custom.voice_id; }
   try { up = await env.TTS.synthesize(text, lang, env.TTS.perAgentVoice ? { voice } : {}); }
   catch (e) { console.error("tts_error", e && e.message); throw new HttpError(503, "tts_unavailable", "La voix de Lina est momentanément indisponible."); }
   // Streaming vers le navigateur (la lecture démarre pendant la génération) + copie pour le cache.
@@ -540,7 +595,7 @@ async function aiFollowup(req, env) {
   const system = en
     ? "You are a professional recruiter running a practice interview. Given a question and the candidate's answer, decide if ONE short follow-up is useful (missing concrete example, personal action, or measurable result). Reply ONLY with the follow-up question (max 25 words), or exactly NONE if the answer is complete. Never evaluate or score."
     : "Tu es une recruteuse professionnelle qui mène un entretien d'entraînement. À partir de la question et de la réponse du candidat, décide si UNE courte relance est utile (exemple concret, action personnelle ou résultat mesurable manquant). Réponds UNIQUEMENT par la question de relance (25 mots max), ou exactement AUCUNE si la réponse est complète. Ne note jamais le candidat.";
-  const agent = (env.AGENTS || []).find((a) => a.id === b.agent);
+  const agent = (await allAgents(env)).find((a) => a.id === b.agent);
   const out = await ask(env, (agent ? agent.style + " " : "") + system, `Poste: ${clip(b.role)}\nQuestion: ${clip(b.question)}\nRéponse: ${clip(b.answer)}`, 80);
   return json({ followup: !out || /^(none|aucune)\b/i.test(out) ? null : out.replace(/^["«\s]+|["»\s]+$/g, "") });
 }
@@ -585,7 +640,9 @@ async function route(req, env, url, ctx) {
   if (p === "/api/tts" && m === "GET") return textToSpeech(url, need(user, "candidate"), env, ctx);
   if (p === "/api/admin/voices" && m === "GET") return adminVoices(url, user, env);
   if ((mm = p.match(/^\/api\/admin\/agents\/([a-z0-9_-]+)\/voice$/)) && m === "POST") return assignVoice(req, user, env, mm[1]);
-  if (p === "/api/agents" && m === "GET") { need(user); return json({ agents: (env.AGENTS || []).map(publicAgent), voices: !!(env.TTS && env.TTS.perAgentVoice) }); }
+  if (p === "/api/agents" && m === "GET") { need(user); const map = await agentVoiceMap(env); return json({ agents: (await allAgents(env)).map((a) => publicAgent(a, voicesSummary(map, a))), voices: !!(env.TTS && env.TTS.perAgentVoice) }); }
+  if (p === "/api/admin/agents" && m === "POST") return createAgent(req, user, env);
+  if ((mm = p.match(/^\/api\/admin\/agents\/([a-z0-9_-]+)$/)) && m === "DELETE") return deleteAgent(user, env, mm[1]);
   if (p === "/api/stt/token" && m === "POST") return sttToken(req, need(user, "candidate"), env);
   if (p === "/api/tts/warmup" && m === "POST") {
     need(user, "candidate");
