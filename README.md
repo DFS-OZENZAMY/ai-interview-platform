@@ -134,3 +134,8 @@ Le backlog et le suivi des sprints sont tenus dans ClickUp ; GitHub et ClickUp s
 | Mehdi | Contributeur et reviewer technique / produit |
 
 Des copilotes IA (ChatGPT, Claude) assistent l'équipe pour la conception, la documentation et la revue. Les rôles restent à confirmer en équipe.
+
+## Déploiement
+
+- **Production** : le Worker `ai-interview-platform` (répertoire racine `poc`) est déployé par Cloudflare à partir de la branche de production configurée dans Cloudflare › Settings › Build ; l'application d'Achraf (`web/`, Worker `ai-interview-web`) est un projet distinct.
+- **Voix de Lina** : préparation du texte pour l'oral et réglages ElevenLabs décrits dans `poc/DEPLOIEMENT.md` (section « Voix de Lina »).
