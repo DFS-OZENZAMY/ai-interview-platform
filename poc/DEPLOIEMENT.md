@@ -68,6 +68,25 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
 
+## Moteur de simulation S2-04 d’Achraf, intégré à la plateforme
+
+Le laboratoire local d’Achraf (`dev/local-preview/ai_interview.py`, Python, en mémoire, sur son poste) est porté dans la plateforme en ligne, sans modifier son code :
+
+| Élément de son moteur | Dans la plateforme |
+| --- | --- |
+| 120 questions `data/question-bank` (statut **draft**) | Source `QUESTION_SOURCE=corpus-preview` : questions servies par le serveur, une à une, sans répétition ; badge « Référentiel · en cours de validation » et mention dans le rapport. Seuls la question, ses métadonnées et ses **pistes de relance humaines** sont utilisés : attendus, variantes, signaux d’alerte et notes d’évaluation ne quittent jamais le serveur (vérifié). Aucune publication ni changement de statut. |
+| Objectifs RH (10) et techniques (8 + 3 par spécialité), 6 spécialités | Choisis à chaque simulation (écran « Configurer la simulation ») ; ils orientent le choix des questions (catégories RH visées en premier, spécialité imposée aux questions techniques) et les relances. Ils ne modifient pas le profil. |
+| Description de poste | Champ facultatif « Personnaliser avec une offre d’emploi » (3 000 caractères), conservé côté serveur et réservé au candidat qui l’a saisi. |
+| Relance IA après chaque réponse | Une relance par question. Avec IA : consigne d’Achraf (recruteur d’entraînement, aucune note ni barème, **réponse du candidat traitée comme donnée non fiable**) + style du recruteur + pistes humaines. Sans IA : la piste humaine la plus adaptée. |
+| Bilan qualitatif prudent | Consigne d’Achraf : 130 mots, un point fort, un point d’amélioration, un exercice ; ni note ni verdict. |
+| Groq `openai/gpt-oss-120b` | `GROQ_API_KEY` (secret) suffit : point d’accès Groq, effort de raisonnement « low », jetons suffisants, `User-Agent` explicite (correctif Cloudflare 403), refus d’une clé OpenAI `sk-…`. Sinon OpenAI compatible ou Workers AI. |
+
+**Activer sur Cloudflare :** variable `QUESTION_SOURCE=corpus-preview` ; facultatif : secret `GROQ_API_KEY` pour Groq (sinon Workers AI est utilisé).
+
+**Gouvernance :** ces questions sont des **brouillons** ; Achraf réserve la publication officielle à une validation humaine. Ce mode convient aux tests internes et aux pilotes ; ne pas le présenter comme le référentiel validé. Quand des questions seront publiées dans Supabase, passer à `QUESTION_SOURCE=catalog-http`.
+
+**Tests :** `tests/s2_04_engine_test.py` 15/15 sur Node et Cloudflare Workers (spécialité, objectifs, offre d’emploi, absence de fuite des attendus, format exact des appels Groq, consignes, isolation du contexte entre candidats) ; parcours navigateur ; tests d’Achraf toujours verts (37 Python, 17 Node).
+
 ## Voix, dictée et recruteurs avec ElevenLabs (configuration par défaut sur Cloudflare)
 
 Le candidat **choisit son recruteur** avant chaque simulation, et peut écouter sa voix :

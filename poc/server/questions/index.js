@@ -22,15 +22,19 @@ const TECH_BY_ROLE = {
   sales: [["rh", "influence"], ["rh", "communication"], ["rh", "mises_en_situation"]],
 };
 
-/** Plan d'entretien sous forme de filtres (pas de questions) : la sélection réelle est faite tour par tour par le catalogue. */
-export function planSlots({ role, level, type, length }) {
+import { RH_GOAL_CATEGORIES, TECH_DOMAINS } from "./goals.js";
+/** Plan d'entretien sous forme de filtres (pas de questions) : la sélection réelle est faite tour par tour par le catalogue.
+ *  domain : spécialité technique choisie ; goals : objectifs de préparation (les catégories RH visées passent en premier). */
+export function planSlots({ role, level, type, length, domain = null, goals = [] }) {
   const n = length === "short" ? 5 : 7;
   const base = { junior: 1, mid: 2, senior: 3 }[level] || 1;
-  const tech = TECH_BY_ROLE[role] || TECH_BY_ROLE.dev;
+  const tech = domain && TECH_DOMAINS[domain] ? [["technical", domain]] : TECH_BY_ROLE[role] || TECH_BY_ROLE.dev;
+  const wanted = [...new Set(goals.flatMap((g) => RH_GOAL_CATEGORIES[g] || []))].filter((c) => !["parcours", "projection"].includes(c));
+  const rhOrder = [...wanted, ...RH_MIDDLE.filter((c) => !wanted.includes(c))];
   const middle = []; let ri = 0, ti = 0;
   while (middle.length < n - 2) {
     const takeTech = type === "tech" || (type !== "rh" && middle.length % 2 === 1);
-    middle.push(takeTech ? tech[ti++ % tech.length] : ["rh", RH_MIDDLE[ri++ % RH_MIDDLE.length]]);
+    middle.push(takeTech ? tech[ti++ % tech.length] : ["rh", rhOrder[ri++ % rhOrder.length]]);
   }
   const slots = [["rh", "parcours"], ...middle, ["rh", "projection"]];
   const half = Math.ceil(middle.length / 2);
@@ -61,6 +65,10 @@ export async function candidateUuid(userId) {
 export async function createQuestionSource(cfg = {}, deps = {}) {
   const kind = (cfg.QUESTION_SOURCE || "builtin").toLowerCase();
   if (kind === "builtin") return null;
+  if (kind === "corpus-preview") {
+    const { corpusPreview } = await import("./corpus.js");
+    return corpusPreview();
+  }
   if (kind === "catalog-sql") {
     if (!deps.pgPool) throw new Error("QUESTION_SOURCE=catalog-sql exige une base PostgreSQL (DATABASE_URL) contenant le schéma question_bank");
     const { catalogSql } = await import("./catalog-sql.js");

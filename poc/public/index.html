@@ -481,6 +481,10 @@ dialog{max-width:600px}
 .lang-tabs{display:flex;gap:6px;margin-top:30px;border-bottom:1px solid var(--line)}
 .lang-tabs button{border:0;background:none;padding:10px 14px;cursor:pointer;font-weight:700;color:var(--muted);border-bottom:3px solid transparent}
 .lang-tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--sage)}
+
+.src-badge.draft{background:color-mix(in srgb,var(--signal) 22%,var(--surface));color:var(--ink)}
+.jd summary{cursor:pointer}.jd textarea{margin-top:10px}
+#goalBox .sub{font-size:.9rem;color:var(--muted);margin:10px 0 6px}
 </style>
 </head>
 <body>
@@ -496,7 +500,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v12 : voix et accents multiples) */
+/* Répétition — POC AI Interview Platform (v13 : moteur S2-04 d’Achraf intégré) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1412,6 +1416,16 @@ function setup(){
   $("#next").onclick=()=>{S.prefs.media={mic:$("#c2").checked,cam:$("#c3").checked,version:"media-v0.1",at:new Date().toISOString()};savePrefs();go("simConfig")};
 }
 
+/* Objectifs de préparation et spécialités (moteur S2-04 d'Achraf) */
+const SIM_RH_GOALS={rh_motivation:"Motivation et projet",rh_parcours:"Présenter mon parcours",rh_teamwork:"Travail en équipe",rh_leadership:"Leadership",rh_behavioral:"Mises en situation",rh_conflict:"Gestion des conflits",communication:"Communication",answer_structure:"Structurer mes réponses",confidence:"Confiance en soi",stress_management:"Gestion du stress"};
+const SIM_TECH_GENERAL={tech_fundamentals:"Fondamentaux",tech_problem_solving:"Résolution de problèmes",tech_architecture:"Architecture",tech_debugging:"Débogage",tech_practices:"Bonnes pratiques",tech_reasoning:"Raisonnement",tech_explain:"Expliquer clairement",tech_incident:"Gestion d’incident"};
+const SIM_DOMAINS={software:["Développement logiciel",{tech_api:"API / backend",tech_system_design:"Architecture système"}],data_ai:["Data & IA",{tech_sql:"SQL",tech_data_pipelines:"Pipelines et qualité des données",tech_ml:"Machine learning"}],cloud_devops:["Cloud & DevOps",{tech_cloud:"Cloud / infrastructure",tech_cicd:"CI/CD",tech_observability:"Observabilité"}],cybersecurity:["Cybersécurité",{tech_security:"Vulnérabilités",tech_threat_model:"Modèles de menace",tech_iam:"Gestion des identités (IAM)"}],testing_qa:["Tests & qualité",{tech_automation:"Automatisation",tech_quality:"Qualité",tech_test_strategy:"Stratégie de test"}],business_analysis:["Business analysis",{tech_requirements:"Cadrage des besoins",tech_user_stories:"User stories",tech_stakeholders:"Parties prenantes"}]};
+const DEFAULT_DOMAIN={dev:"software",data:"data_ai",pm:"business_analysis"};
+function goalChips(type,domain,selected){
+  const rh=type!=="tech"?Object.entries(SIM_RH_GOALS):[], tech=type!=="rh"?[...Object.entries(SIM_TECH_GENERAL),...Object.entries((SIM_DOMAINS[domain]||[0,{}])[1])]:[];
+  const chip=([k,l])=>`<button type="button" class="chip" data-goal="${k}" aria-pressed="${selected.includes(k)}">${esc(l)}</button>`;
+  return `${rh.length?`<p class="sub">Côté RH</p><div class="chips">${rh.map(chip).join("")}</div>`:""}${tech.length?`<p class="sub">Côté technique</p><div class="chips">${tech.map(chip).join("")}</div>`:""}`;
+}
 function simConfig(){
   const P=S.prefs.profile, prof=OB.profile, fam=prof&&jobFamily(prof.situation.targetJob), suggested=fam&&PC.FAMILIES[fam].role;
   const radios=(name,opts,val)=>`<div class="choices">${Object.entries(opts).map(([k,[l,sub]])=>`<label class="choice radio ${val===k?"on":""}"><input type="radio" name="${name}" value="${k}" ${val===k?"checked":""}><b>${esc(l)}</b>${sub?`<small>${esc(sub)}</small>`:""}</label>`).join("")}</div>`;
@@ -1430,6 +1444,11 @@ function simConfig(){
       <fieldset class="ob-field"><legend>Questions métier</legend>${suggested?`<p class="hint">Proposé d’après votre métier visé : ${esc(prof.situation.targetJob)}.</p>`:prof?`<p class="hint">Votre métier visé (${esc(prof.situation.targetJob)}) n’a pas encore de banque de questions dédiée : choisissez le plus proche.</p>`:""}
         ${radios("role",Object.fromEntries(Object.entries(ROLES).map(([k,v])=>[k,[v.fr]])),P.role)}<p class="ferr" id="roleErr" hidden>Choisissez un métier pour la simulation.</p></fieldset>
       <fieldset class="ob-field"><legend>Type d’entretien</legend>${radios("type",Object.fromEntries(Object.entries(TYPES).map(([k,v])=>[k,[v.fr,v.hint]])),P.type||"mix")}</fieldset>
+      <fieldset class="ob-field" id="domainField" ${(P.type||"mix")==="rh"?"hidden":""}><legend>Spécialité technique</legend><p class="hint">Les questions techniques porteront sur ce domaine.</p>
+        <div class="choices cols-3">${Object.entries(SIM_DOMAINS).map(([k,[l]])=>`<label class="choice radio ${(P.domain||DEFAULT_DOMAIN[P.role]||"software")===k?"on":""}"><input type="radio" name="domain" value="${k}" ${(P.domain||DEFAULT_DOMAIN[P.role]||"software")===k?"checked":""}><b>${esc(l)}</b></label>`).join("")}</div></fieldset>
+      <fieldset class="ob-field"><legend>Objectifs de cette simulation <span class="opt">(8 au maximum)</span></legend><p class="hint">Ils orientent le choix des questions et les relances. Ils ne modifient pas votre profil.</p><div id="goalBox">${goalChips(P.type||"mix",P.domain||DEFAULT_DOMAIN[P.role]||"software",P.simGoals||[])}</div></fieldset>
+      <details class="ob-field jd"><summary><b>Personnaliser avec une offre d’emploi</b> <span class="opt">(facultatif)</span></summary>
+        <label class="field"><span class="sr-only">Offre d’emploi</span><textarea name="jobDescription" maxlength="3000" rows="5" placeholder="Collez ici l’offre : les relances s’appuieront dessus. Évitez les données personnelles.">${esc(P.jobDescription||"")}</textarea></label></details>
       <fieldset class="ob-field"><legend>Langue de l’entretien</legend>${radios("lang",{fr:["Français"],en:["English"]},P.lang||"fr")}</fieldset>
       <fieldset class="ob-field"><legend>Durée</legend>${radios("length",{short:["Format court","5 questions, environ 10 minutes"],std:["Format standard","7 questions, environ 15 minutes"]},P.length||"std")}</fieldset>
       <p class="notice">Niveau des questions : ${esc(LEVELS[P.level]?.fr||"Junior")}, d’après l’expérience déclarée dans votre profil.</p>
@@ -1437,9 +1456,14 @@ function simConfig(){
     </form></section>`;
   const f=$("#simForm");
   f.querySelectorAll("input[type=radio]").forEach(r=>r.onchange=()=>{f.querySelectorAll(`input[name=${r.name}]`).forEach(x=>x.closest(".choice").classList.toggle("on",x.checked))});
+  let simGoals=[...(P.simGoals||[])];
+  const curType=()=>(new FormData(f)).get("type")||"mix", curDomain=()=>(new FormData(f)).get("domain")||DEFAULT_DOMAIN[P.role]||"software";
+  const bindGoals=()=>$("#goalBox").querySelectorAll("[data-goal]").forEach(b=>b.onclick=()=>{const k=b.dataset.goal;if(simGoals.includes(k))simGoals=simGoals.filter(x=>x!==k);else if(simGoals.length<8)simGoals.push(k);else return toast("8 objectifs au maximum.");b.setAttribute("aria-pressed",simGoals.includes(k))});
+  const redrawGoals=()=>{const t=curType(),d=curDomain();$("#domainField").hidden=t==="rh";const ok=new Set([...(t!=="tech"?Object.keys(SIM_RH_GOALS):[]),...(t!=="rh"?[...Object.keys(SIM_TECH_GENERAL),...Object.keys((SIM_DOMAINS[d]||[0,{}])[1])]:[])]);simGoals=simGoals.filter(g=>ok.has(g));$("#goalBox").innerHTML=goalChips(t,d,simGoals);bindGoals()};
+  bindGoals(); f.querySelectorAll("input[name=type],input[name=domain]").forEach(r=>r.addEventListener("change",redrawGoals));
   f.querySelectorAll("[data-listen]").forEach(b=>b.onclick=(e)=>{e.preventDefault();const a=agentOf(b.dataset.listen),lang=(new FormData(f)).get("lang")||"fr";speak(a.greeting[lang]||a.greeting.fr,lang,a.id)});
   f.onsubmit=(e)=>{e.preventDefault();stopVoice();const d=new FormData(f);if(!d.get("role")){$("#roleErr").hidden=false;f.querySelector("input[name=role]").focus();return}
-    Object.assign(P,{agent:d.get("agent")||"lina",role:d.get("role"),type:d.get("type"),lang:d.get("lang"),length:d.get("length")});P.level=P.level||"junior";savePrefs();go("prep")};
+    Object.assign(P,{agent:d.get("agent")||"lina",role:d.get("role"),type:d.get("type"),lang:d.get("lang"),length:d.get("length"),domain:d.get("type")==="rh"?null:(d.get("domain")||null),simGoals,jobDescription:String(d.get("jobDescription")||"").slice(0,3000)});P.level=P.level||"junior";savePrefs();go("prep")};
 }
 function prep(){
   const P=S.prefs.profile; if(!P.role||!P.level){return go("simConfig")}
@@ -1450,7 +1474,7 @@ function prep(){
     <p class="lede" style="margin-top:12px">${esc(ROLES[P.role].fr)} · ${esc(LEVELS[P.level].fr)} · ${esc(TYPES[P.type].fr)} · ${P.lang==="en"?"English":"Français"}</p>
     <div class="prep">
       <div class="panel"><h3>Ce que Lina va aborder</h3>
-        ${useCatalog()?`<p class="hint" style="margin-top:10px">${P.length==="short"?5:7} questions tirées du <b>référentiel officiel S2-03</b>, choisies une à une pendant l’entretien selon votre profil (présentation, ${P.type==="rh"?"mises en situation":P.type==="tech"?"questions métier":"mises en situation et questions métier"}, projection). Seules les questions validées et publiées peuvent être posées ; elles ne sont pas affichées à l’avance.</p>`
+        ${useCatalog()?`<p class="hint" style="margin-top:10px">${P.length==="short"?5:7} questions tirées du <b>${API.questionSource==="corpus-preview"?"référentiel d’Achraf (120 questions, en cours de validation)":"référentiel officiel S2-03"}</b>${P.domain&&P.type!=="rh"?`, spécialité <b>${esc((SIM_DOMAINS[P.domain]||[""])[0])}</b>`:""}${(P.simGoals||[]).length?`, ${P.simGoals.length} objectif${P.simGoals.length>1?"s":""} ciblé${P.simGoals.length>1?"s":""}`:""}, choisies une à une pendant l’entretien selon votre profil (présentation, ${P.type==="rh"?"mises en situation":P.type==="tech"?"questions métier":"mises en situation et questions métier"}, projection). Seules les questions validées et publiées peuvent être posées ; elles ne sont pas affichées à l’avance.</p>`
           :`<ol class="plan-list">${plan.map(q=>`<li><span>${esc(q.comp)}<small>${q.kind==="tech"?"Question métier":"Question comportementale"}</small></span></li>`).join("")}</ol>`}</div>
       <div class="stack">
         <div class="panel"><h3>Conseils pour vous</h3>
@@ -1480,7 +1504,7 @@ async function startSession(planIds,drill=false,custom=null,btn=null){
   if(!drill&&!custom&&useCatalog()){
     busy(btn,true,"Préparation de l’entretien…");
     try{
-      const r=await call("POST","/api/interview/start",{sessionId:L.id,role:P.role,level:P.level,type:P.type,lang:P.lang,length:P.length});
+      const r=await call("POST","/api/interview/start",{sessionId:L.id,role:P.role,level:P.level,type:P.type,lang:P.lang,length:P.length,domain:P.domain||null,goals:P.simGoals||[],jobDescription:P.jobDescription||""});
       Object.assign(L,{source:r.source,catalog:true,current:r.question,total:r.question.total});
     }catch(e){
       busy(btn,false);
@@ -1527,7 +1551,7 @@ function interview(){
     </aside>
     <div class="convo">
       <header class="convo-head">
-        <div><b>Question ${L.idx+1} sur ${total}</b><span class="hint"> · ${esc(q.comp)}</span>${L.catalog?` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`:""}</div>
+        <div><b>Question ${L.idx+1} sur ${total}</b><span class="hint"> · ${esc(q.comp)}</span>${L.catalog?(L.current&&L.current.draft?` <span class="src-badge draft" title="Question du référentiel d’Achraf, en attente de validation humaine">Référentiel · en cours de validation</span>`:` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`):""}</div>
         <ol class="dots" aria-label="Progression">${Array.from({length:total},(_,i)=>`<li class="${i<L.idx?"done":i===L.idx?"now":""}"></li>`).join("")}</ol>
       </header>
       <div class="thread" id="thread">${history}${current}<div class="bubble me draft" id="draftBubble" hidden><span class="who">Vous · en direct</span><p id="draftText"></p></div></div>
@@ -1569,11 +1593,14 @@ async function submitAnswer(){
   busy($("#send"),true);
   if(L.pending){commitTurn(L.pending.answer+" "+ans,L.pending.followup,ans);return}
   let f=null; const goalsPush=(S.prefs.profile.goals||[]).some(g=>["structure","examples"].includes(g));
-  if(!L.followupAsked||goalsPush){
-    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:currentQ(L)[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr,agent:L.agent})).followup||null}catch(e){f=localFollowup(ans,L.lang,agentOf(L.agent).followupStyle||L.agent)}}
-    else f=localFollowup(ans,L.lang,agentOf(L.agent).followupStyle||L.agent);
+  const seeds=(L.catalog&&L.current&&L.current.seeds)||[], q0=currentQ(L), style=agentOf(L.agent).followupStyle||L.agent;
+  const engine=L.catalog||API.ai;                     // moteur S2-04 : une relance par question
+  const localF=()=>{if(seeds.length){const a=analyse(ans,"");if(a.w<30||!a.star.includes("result")||!a.star.includes("action"))return seeds[a.w<30?0:Math.min(1,seeds.length-1)]}return localFollowup(ans,L.lang,style)};
+  if(engine||!L.followupAsked||goalsPush){
+    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:q0[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr,agent:L.agent,kind:q0.kind,seeds,sessionId:L.id})).followup||null}catch(e){f=localF()}}
+    else f=localF();
   }
-  if(f&&L.turns.filter(t=>t.followup).length<3){L.pending={answer:ans,followup:f};L.followupAsked=true;interview();return}
+  if(f&&L.turns.filter(t=>t.followup).length<(engine?totalQ(L):3)){L.pending={answer:ans,followup:f};L.followupAsked=true;interview();return}
   commitTurn(ans,null,null);
 }
 function commitTurn(answer,followup,followupAnswer){
@@ -1614,7 +1641,7 @@ async function processing(){
   const li=[...app.querySelectorAll("#stepsP li")], tick=(i)=>li[i]&&li[i].classList.add("ok"), wait=(ms)=>new Promise(r=>setTimeout(r,ms));
   tick(0); await wait(450);
   const ev=evaluate(L); tick(1); await wait(450); tick(2);
-  if(API.ai&&ev.status==="evaluated"){try{const r=await call("POST","/api/ai/feedback",{lang:L.lang,role:ROLES[L.role].fr,level:LEVELS[L.level].fr,turns:L.turns.filter(t=>!t.skipped).map(t=>({q:t.prompt,a:t.answer})),scores:ev.criteria.map(c=>({label:c.label,level:c.level}))});if(r&&r.summary){ev.aiSummary=r.summary;ev.engine="local+workers-ai"}}catch(e){}}
+  if(API.ai&&ev.status==="evaluated"){try{const r=await call("POST","/api/ai/feedback",{sessionId:L.id,lang:L.lang,role:ROLES[L.role].fr,level:LEVELS[L.level].fr,turns:L.turns.filter(t=>!t.skipped).map(t=>({q:t.prompt,a:t.answer})),scores:ev.criteria.map(c=>({label:c.label,level:c.level}))});if(r&&r.summary){ev.aiSummary=r.summary;ev.engine="local+workers-ai"}}catch(e){}}
   L.evaluation=ev; L.status=ev.status; await persist(); tick(3); await wait(300);
   S.viewing=snapshot(); S.live=null; go("report");
 }
@@ -1632,10 +1659,11 @@ function reportHTML(s,{coachView=false}={}){
         <h2>${coachView?"Résultat de la simulation":E.overall>=75?"Un entretien convaincant.":E.overall>=55?"De bonnes bases, des points à muscler.":"Un premier essai utile pour progresser."}</h2>
         <p class="lede">${esc(ROLES[s.role]?.fr||"")} · ${esc(LEVELS[s.level]?.fr||"")} · ${fmtDate(s.endedAt||s.startedAt)} · ${E.answered} réponses analysées${E.skipped?` · ${E.skipped} passée${E.skipped>1?"s":""}`:""}</p>
         <p class="hint">Entretien mené par ${esc(agentOf(s.agent).name)} · ${esc(agentOf(s.agent).title)}</p>
-        ${s.source&&s.source!=="builtin"?`<p class="notice">Questions issues du référentiel officiel S2-03 (versions figées dans le catalogue). La notation reste celle du POC, en attendant les grilles du Sprint 3.</p>`:""}<p class="notice">Retour d’entraînement calculé avec la grille ${E.rubricVersion}${E.engine==="local+workers-ai"?" ; commentaire rédigé par l’IA":""}. Non validé par un expert ; ce n’est pas une décision de recrutement.</p>
+        ${s.source==="corpus-preview"?`<p class="notice">Questions issues du référentiel d’Achraf (120 questions), en version de travail : elles n’ont pas encore été validées ni publiées.</p>`:""}
+        ${s.source&&s.source!=="builtin"&&s.source!=="corpus-preview"?`<p class="notice">Questions issues du référentiel officiel S2-03 (versions figées dans le catalogue). La notation reste celle du POC, en attendant les grilles du Sprint 3.</p>`:""}<p class="notice">Retour d’entraînement calculé avec la grille ${E.rubricVersion}${E.engine==="local+workers-ai"?" ; commentaire rédigé par l’IA":""}. Non validé par un expert ; ce n’est pas une décision de recrutement.</p>
       </div>
     </div>
-    ${E.aiSummary?`<div class="panel" style="margin-bottom:24px"><h3>Le mot de Lina</h3><p style="margin-top:8px">${esc(E.aiSummary)}</p></div>`:""}
+    ${E.aiSummary?`<div class="panel" style="margin-bottom:24px"><h3>Le bilan de ${esc(agentOf(s.agent).name)}</h3><p style="margin-top:8px">${esc(E.aiSummary)}</p></div>`:""}
     <div class="criteria">${E.criteria.map(c=>`<article class="crit ${c.level<2.5?"weak":""}">
         <div class="crit-top"><h3>${c.label}</h3><span class="lvl">${lvlWord(c.level)}</span></div>
         <div class="bars" aria-label="${c.level} sur 5">${[1,2,3,4,5].map(i=>`<i class="${i<=Math.round(c.level)?"on":""}"></i>`).join("")}</div>
