@@ -4,6 +4,7 @@
  *  - pocket-tts : Kyutai Pocket TTS (100 M de paramètres, tourne sur CPU), un serveur `pocket-tts serve` par langue.
  * La voix est fixée par la configuration du serveur : le navigateur ne choisit ni la voix ni l'URL (pas de SSRF).
  */
+import { prepareForSpeech } from "./speech-prep.js";
 const VOICE_OK = /^([a-z][a-z0-9_-]{1,40}|https:\/\/[^\s]{8,300})$/;
 
 /**
@@ -52,6 +53,10 @@ function elevenLabsTts(cfg) {
   const base = (cfg.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io").replace(/\/+$/, "");
   const key = cfg.ELEVENLABS_API_KEY;
   const chain = cfg.ELEVENLABS_TTS_MODEL ? [cfg.ELEVENLABS_TTS_MODEL, ...MODEL_CHAIN.filter((m) => m !== cfg.ELEVENLABS_TTS_MODEL)] : MODEL_CHAIN;
+  /* Réglages « conversation » : assez de variation pour sonner vivant (stabilité plus basse, style présent), sans dérive ;
+     chacun reste ajustable côté serveur (ELEVENLABS_STABILITY, _STYLE, _SIMILARITY, _SPEED). */
+  const num = (v, d, lo, hi) => { const x = Number(v); return Number.isFinite(x) && v !== undefined && v !== "" ? Math.min(hi, Math.max(lo, x)) : d; };
+  const settings = { stability: num(cfg.ELEVENLABS_STABILITY, 0.38, 0, 1), similarity_boost: num(cfg.ELEVENLABS_SIMILARITY, 0.78, 0, 1), style: num(cfg.ELEVENLABS_STYLE, 0.35, 0, 1), speed: num(cfg.ELEVENLABS_SPEED, 0.97, 0.7, 1.2), use_speaker_boost: true };
   let working = null;                                            // premier modèle accepté par le compte, mémorisé
   const api = async (path, init = {}) => {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 30000);
@@ -67,7 +72,7 @@ function elevenLabsTts(cfg) {
       const models = working ? [working] : chain;
       let last = null;
       for (const model of models) {
-        const body = { text, model_id: model, voice_settings: { stability: 0.45, similarity_boost: 0.8, style: 0.15, use_speaker_boost: true } };
+        const body = { text: prepareForSpeech(text, lang), model_id: model, voice_settings: settings };
         if (!NO_LANGUAGE_CODE.has(model)) body.language_code = lang === "en" ? "en" : "fr";
         const r = await api(`/v1/text-to-speech/${voice}/stream?output_format=mp3_44100_128`, { method: "POST", headers: { "content-type": "application/json", accept: "audio/mpeg" }, body: JSON.stringify(body) });
         if (r.ok && r.body) { if (working !== model) { working = model; console.log("elevenlabs_model", model); } return r; }

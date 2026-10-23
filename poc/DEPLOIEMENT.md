@@ -232,3 +232,10 @@ Navigateur ─► Worker ai-interview-platform ─► Durable Object LinaVoice �
 - Construire et tester l’image Docker sur la cible retenue ; ajouter un pipeline CI qui rejoue `tests/` sur chaque hôte.
 - Brancher la banque de questions S2-03 (`question_bank.published_questions_safe`) via un service serveur, une fois des questions publiées : aucune ne l’est aujourd’hui.
 - Sauvegardes, rotation des secrets, supervision, limitation de débit à l’échelle (aujourd’hui en base).
+
+## Voix de Lina « très humaine » (réglages)
+
+- **Texte préparé pour l'oral** (`poc/server/tts/speech-prep.js`) : sigles dits lettre à lettre (« RH »), notations lues (« 3/5 » → « 3 sur 5 »), markdown, émojis et liens retirés, respirations après « Hmm », phrases longues coupées à la virgule la plus proche du milieu. Testé par `poc/tests/speech_prep_test.mjs`.
+- **Réglages ElevenLabs « conversation »** : stabilité 0,38, similarité 0,78, style 0,35, vitesse 0,97. Ajustables sans redéployer le code via les variables `ELEVENLABS_STABILITY`, `ELEVENLABS_SIMILARITY`, `ELEVENLABS_STYLE`, `ELEVENLABS_SPEED`. Le modèle reste `ELEVENLABS_TTS_MODEL` (repli automatique si le compte n'y a pas accès).
+- **Consignes de Lina rédigées pour être dites à voix haute** : phrases courtes, registre oral, réaction à l'émotion du candidat, et, après une vraie réponse, un court accusé de réception qui reprend un élément concret de ce qu'il a dit avant la relance.
+- **À juger à l'oreille** : la qualité réelle dépend de la voix choisie dans l'écran « Voix » et du vrai modèle Groq ; les tests utilisent de faux ElevenLabs et Groq.
