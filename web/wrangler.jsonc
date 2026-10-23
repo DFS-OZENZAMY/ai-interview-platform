@@ -1,7 +1,7 @@
 {
   // Application candidat d'Achraf (Next.js) sur Cloudflare Workers, via OpenNext.
   // Répertoire racine du build Cloudflare : web · build : npx opennextjs-cloudflare build · déploiement : npx opennextjs-cloudflare deploy
-  "name": "ai-interview-web",
+  "name": "ai-interview-plateform",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
