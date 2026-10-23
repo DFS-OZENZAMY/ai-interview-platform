@@ -5,6 +5,7 @@ import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
 import { createSttProvider, openSttSession } from "../stt/index.js";
 import { createTtsProvider } from "../tts/index.js";
+import { loadAgents } from "../agents.js";
 export { LinaVoice } from "./lina-voice.js";   // Durable Object du conteneur Pocket TTS (Cloudflare Containers)
 
 let api;
@@ -21,7 +22,7 @@ function orderedBinary(handler) {
 /* Transcription Kyutai : WebSocket relayé ; la clé ne quitte jamais le Worker. */
 async function sttStream(req, env, url) {
   const provider = createSttProvider(env);
-  if (!provider) return new Response("Transcription serveur non configurée", { status: 404 });
+  if (!provider || provider.mode === "token") return new Response("Transcription serveur non configurée", { status: 404 });
   if ((req.headers.get("upgrade") || "").toLowerCase() !== "websocket") return new Response("WebSocket attendu", { status: 426 });
   const origin = req.headers.get("origin"); if (origin && origin !== url.origin) return new Response("Origine refusée", { status: 403 });
   const user = await api.authenticate(req);
@@ -68,6 +69,7 @@ export default {
       AI: createAI(env, { AI: env.AI }),
       QUESTIONS: await createQuestionSource(env),
       STT: createSttProvider(env),
+      AGENTS: loadAgents(env),
       TTS: createTtsProvider(env, env.LINA_VOICE ? { container: (r) => env.LINA_VOICE.get(env.LINA_VOICE.idFromName("lina-fr")).fetch(r) } : {}),
       COACH_INVITE_CODE: env.COACH_INVITE_CODE,
       COOKIE_SECURE: env.COOKIE_SECURE !== "false",

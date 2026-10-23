@@ -1,0 +1,48 @@
+import asyncio,sys,random,json
+from playwright.async_api import async_playwright
+BASE=sys.argv[1]; R=random.randint(1000,9999)
+async def main():
+  async with async_playwright() as p:
+    b=await p.chromium.launch(args=["--use-fake-ui-for-media-stream","--use-fake-device-for-media-stream","--use-file-for-fake-audio-capture=/tmp/voice.wav","--autoplay-policy=no-user-gesture-required"])
+    ctx=await b.new_context(viewport={"width":1280,"height":900},permissions=["microphone"]); pg=await ctx.new_page(); errs=[]; net=[]; wsurls=[]
+    pg.on("pageerror",lambda e:errs.append(str(e))); pg.on("dialog",lambda d:asyncio.ensure_future(d.accept()))
+    pg.on("response",lambda r: net.append((r.status,r.headers.get("content-type"),r.url.split("?")[0].split("/api/")[-1],("agent="+r.url.split("agent=")[1].split("&")[0]) if "agent=" in r.url else "")) if "/api/tts" in r.url or "/api/stt" in r.url or "/api/agents" in r.url else None)
+    pg.on("websocket",lambda w: wsurls.append(w.url))
+    nxt=lambda: pg.click("#obForm [type=submit]")
+    await pg.goto(BASE); await pg.wait_for_timeout(900); await pg.click("text=Créer mon compte gratuit")
+    await pg.fill("[name=name]","Ilyas Bennani"); await pg.fill("[name=email]",f"i{R}@el.io"); await pg.fill("[name=password]","password12"); await pg.check("[name=consent]"); await pg.click("#authForm [type=submit]"); await pg.wait_for_timeout(800)
+    await pg.click("label.choice:has-text('Salarié·e')"); await pg.fill("[data-p='situation.currentJob']","Développeur web"); await pg.fill("[data-p='situation.targetJob']","Développeur·se full-stack"); await nxt()
+    await pg.fill("[data-p='background.yearsExperience']","4"); await pg.click(".chip:has-text('Conseil')"); await nxt()
+    await pg.click("label.choice:has-text('Changer de poste')"); await pg.click(".chip:has-text('Préparer un entretien précis')"); await pg.click(".chip:has-text('Gestion du stress')"); await nxt()
+    await pg.select_option("#lang-0","Français"); await pg.click("label.cefr-opt:has-text('C2')"); await pg.click("label.choice:has-text('Français') >> nth=0"); await nxt(); await pg.wait_for_timeout(200)
+    await pg.click(".skill-col >> nth=1 >> .chip.ghost:has-text('Docker')"); await nxt(); await pg.wait_for_timeout(200); await pg.click("#obFinish"); await pg.wait_for_timeout(700); await pg.click("#toDash"); await pg.wait_for_timeout(400)
+    await pg.click("#st"); await pg.wait_for_timeout(200)
+    print("consentement micro :", (await pg.text_content("label:has(#c2) small")).strip()[:90])
+    await pg.check("#c2"); await pg.click("#next"); await pg.wait_for_timeout(500)
+    print("agents proposés :", [x.strip()[:40] for x in await pg.locator(".agent-card b").all_text_contents()])
+    await pg.click("label.agent-card:has-text('Karim')"); await pg.click("[data-listen=karim]"); await pg.wait_for_timeout(1500)
+    await pg.screenshot(path="el_agents.png",full_page=True)
+    await pg.click("#simForm [type=submit]"); await pg.wait_for_timeout(300)
+    print("réglage voix :", (await pg.text_content("label:has(#voice) small")).strip())
+    await pg.click("#go"); await pg.wait_for_timeout(700)
+    print("recruteur affiché :", (await pg.text_content(".orb .name")).strip())
+    st=[]
+    for _ in range(10): await pg.wait_for_timeout(250); st.append((await pg.get_attribute("#orb","class")).split()[-1])
+    print("Karim parle :", "speaking" in st)
+    await pg.screenshot(path="el_interview.png")
+    await pg.click("#dictBtn"); await pg.wait_for_timeout(3500)
+    print("pendant la dictée :", (await pg.input_value("#answer"))[:80], "|", (await pg.text_content("#dictBtn")))
+    await pg.click("#dictBtn"); await pg.wait_for_timeout(1500)
+    final=await pg.input_value("#answer"); print("texte final :", final[:110]); print("bouton :", await pg.text_content("#dictBtn"))
+    await pg.fill("#answer","J'ai fait des tests."); await pg.dispatch_event("#answer","input"); await pg.click("#send"); await pg.wait_for_timeout(800)
+    print("relance de Karim :", (await pg.text_content("#qtext")).strip())
+    for i in range(12):
+      await pg.wait_for_timeout(250)
+      if not await pg.query_selector("#answer"): break
+      await pg.fill("#answer","Lors d'une migration, mon objectif était de fiabiliser l'API. J'ai mis en place des tests et du monitoring, ce qui a permis de réduire les incidents de 40 %."); await pg.dispatch_event("#answer","input"); await pg.click("#send")
+    await pg.wait_for_timeout(2600); print("rapport :", (await pg.locator("text=Entretien mené par").first.text_content()).strip())
+    for n in net: print("  réseau :", n)
+    print("  WebSocket ouverts :", [u.split("?")[0] for u in wsurls], "| clé API dans l'URL :", any("sk_" in u for u in wsurls))
+    html=await pg.content(); print("clé API présente dans la page :", "sk_test_elevenlabs" in html)
+    print("errors", errs); await b.close()
+asyncio.run(main())

@@ -386,6 +386,16 @@ dialog{max-width:600px}
   .recap-sec dl div{grid-template-columns:1fr;gap:0}
 }
 .src-badge{display:inline-block;margin-left:8px;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--sage-soft);color:var(--sage);vertical-align:1px}
+
+/* Choix du recruteur */
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:6px}
+.agent-card{display:grid!important;grid-template-columns:auto 1fr;column-gap:12px;row-gap:2px;align-items:start;padding:16px!important}
+.agent-card .agent-dot{grid-row:span 3;width:34px;height:34px;border-radius:50%;background:var(--orb);box-shadow:0 0 0 4px color-mix(in srgb,var(--orb) 25%,transparent);margin-top:2px}
+.agent-card b{font-family:var(--display);font-size:1.1rem}
+.agent-card .agent-desc{grid-column:2;color:var(--muted);font-size:.9rem;line-height:1.35;margin-top:4px}
+.agent-card .agent-listen{grid-column:2;justify-self:start;margin-top:10px}
+.choice.radio.agent-card.on{border-color:var(--orb);background:color-mix(in srgb,var(--orb) 10%,var(--surface))}
+.orb .ring{stroke:var(--orb,var(--sage))}.orb .core{fill:var(--orb,var(--sage))}
 </style>
 </head>
 <body>
@@ -401,7 +411,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v8 : voix Kyutai dans Cloudflare Containers) */
+/* Répétition — POC AI Interview Platform (v9 : ElevenLabs + choix du recruteur) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -659,11 +669,18 @@ function scoreTurn(a){
 }
 
 /* ---------- Relances (S2-04) ---------- */
-function localFollowup(text, lang){
-  const a=analyse(text,""); const en=lang==="en";
-  if(a.w<30) return en?"Could you develop that with a concrete example?":"Pouvez-vous développer avec un exemple concret ?";
-  if(!a.star.includes("action")) return en?"What did you do personally, step by step?":"Qu’avez-vous fait personnellement, étape par étape ?";
-  if(!a.star.includes("result")) return en?"And what was the outcome? Ideally with a figure.":"Et quel a été le résultat ? Idéalement avec un chiffre.";
+/* Relances locales, formulées selon le style du recruteur choisi. */
+const FOLLOWUPS={
+  lina:{short:["Pouvez-vous développer avec un exemple concret ?","Could you develop that with a concrete example?"],action:["Qu’avez-vous fait personnellement, étape par étape ?","What did you do personally, step by step?"],result:["Et quel a été le résultat ? Idéalement avec un chiffre.","And what was the outcome? Ideally with a figure."]},
+  karim:{short:["C’est un peu court. Donnez-moi un cas précis, avec les outils utilisés.","That's a bit short. Give me a specific case, with the tools you used."],action:["Concrètement, qu’avez-vous fait vous-même, et pourquoi ce choix ?","Concretely, what did you do yourself, and why that choice?"],result:["Et le résultat mesuré, c’est quoi ?","And what was the measured result?"]},
+  sofia:{short:["Soyez précis : un exemple.","Be specific: one example."],action:["Votre action à vous ?","Your own action?"],result:["Le résultat. En chiffres.","The result. In numbers."]},
+  adam:{short:["Reprenons avec la méthode STAR : quel était le contexte ?","Let's use the STAR method: what was the context?"],action:["Bien. Quelle action avez-vous menée personnellement ?","Good. What action did you personally take?"],result:["Il manque la dernière étape : quel a été le résultat ?","The last step is missing: what was the result?"]},
+};
+function localFollowup(text, lang, agentId){
+  const a=analyse(text,""), i=lang==="en"?1:0, F=FOLLOWUPS[agentId]||FOLLOWUPS.lina;
+  if(a.w<(agentId==="sofia"?20:30)) return F.short[i];
+  if(!a.star.includes("action")) return F.action[i];
+  if(!a.star.includes("result")) return F.result[i];
   return null;
 }
 
@@ -1154,7 +1171,17 @@ const Demo=(()=>{
 /* =========================================================
    État et utilitaires
    ========================================================= */
-const S={screen:"home",step:0,user:null,sessions:[],requests:[],live:null,viewing:null,voice:true,cam:false,authMode:"login",authRole:"candidate",coachTab:"pending",prefs:null,booted:false};
+/* Recruteurs virtuels (le serveur fournit la liste ; en mode démo, liste locale, voix du navigateur). */
+const LOCAL_AGENTS=[
+  {id:"lina",name:"Lina",title:"Recruteuse RH bienveillante",color:"#2E6B64",description:"Ton chaleureux, relances douces. Idéale pour un premier entraînement ou pour gagner en confiance.",greeting:{fr:"Bonjour, je suis Lina. Prenez votre temps, nous sommes là pour nous entraîner.",en:"Hello, I'm Lina. Take your time, this is practice."},strictness:1},
+  {id:"karim",name:"Karim",title:"Manager technique exigeant",color:"#3B5BA9",description:"Va droit au but et demande des précisions concrètes : outils, choix techniques, résultats mesurés.",greeting:{fr:"Bonjour, Karim, je dirige l'équipe. Allons droit au but.",en:"Hi, I'm Karim, I lead the team. Let's get straight to it."},strictness:3},
+  {id:"sofia",name:"Sofia",title:"DRH pressée, entretien sous tension",color:"#8A4B6E",description:"Peu de temps, questions courtes, attend des réponses chiffrées. Pour s'entraîner à la pression.",greeting:{fr:"Bonjour. Sofia, DRH. J'ai peu de temps, soyez concis.",en:"Hello. Sofia, HR director. I'm short on time, so be concise."},strictness:3},
+  {id:"adam",name:"Adam",title:"Coach d'entraînement pédagogue",color:"#B07A1E",description:"Pose les questions comme un recruteur, mais relance pour vous faire structurer vos réponses (méthode STAR).",greeting:{fr:"Bonjour, je suis Adam, votre coach. Je vais vous aider à structurer vos réponses.",en:"Hello, I'm Adam, your coach. I'll help you structure your answers."},strictness:2},
+];
+const BROWSER_VOICE={lina:{pitch:1.1,rate:1.0},karim:{pitch:0.8,rate:1.0},sofia:{pitch:1.0,rate:1.15},adam:{pitch:0.9,rate:0.95}};
+const agentOf=(id)=>(S.agents||LOCAL_AGENTS).find(a=>a.id===id)||(S.agents||LOCAL_AGENTS)[0];
+const curAgent=()=>agentOf(S.live&&S.live.agent||S.prefs.profile.agent);
+const S={screen:"home",agents:null,step:0,user:null,sessions:[],requests:[],live:null,viewing:null,voice:true,cam:false,authMode:"login",authRole:"candidate",coachTab:"pending",prefs:null,booted:false};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=(t)=>String(t??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const app=$("#app");
@@ -1200,7 +1227,7 @@ function render(){
    Authentification
    ========================================================= */
 async function boot(){
-  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider;API.questionSource=j.questionSource||"builtin";API.stt=j.stt||"browser";API.tts=j.tts||"browser";API.ttsLanguages=j.ttsLanguages||[]}
+  try{const r=await fetch("/api/health",{cache:"no-store"});if(!r.ok)throw 0;const j=await r.json();if(!j.db)throw 0;API.mode="remote";API.ai=!!j.ai;API.coachSignup=!!j.coachSignup;API.runtime=j.runtime;API.store=j.store;API.aiProvider=j.aiProvider;API.questionSource=j.questionSource||"builtin";API.stt=j.stt||"browser";API.tts=j.tts||"browser";API.ttsLanguages=j.ttsLanguages||[];API.sttMode=j.sttMode||null;API.agentVoices=!!j.agentVoices}
   catch(e){API.mode="demo";API.coachSignup=true}
   try{const {user}=await call("GET","/api/auth/me");S.user=user}catch(e){S.user=null}
   await afterLogin(false);
@@ -1212,6 +1239,7 @@ async function afterLogin(navigate=true){
     try{
       if(S.user.role==="candidate"){await loadOnboarding();if(OB.status==="done")applyProfileToSim(OB.profile,false);S.sessions=(await call("GET","/api/sessions")).sessions||[]}
       S.requests=(await call("GET","/api/requests")).requests||[];
+      if(S.user.role==="candidate"){try{const r=await call("GET","/api/agents");if(r.agents&&r.agents.length)S.agents=r.agents}catch(e){}}
     }catch(e){toast(e.message)}
   }
   go(navigate&&S.user?HOME[S.user.role]:S.screen);
@@ -1290,7 +1318,7 @@ function setup(){
     <h2>Micro et caméra</h2>
     <p class="lede" style="margin-top:12px">Les deux sont facultatifs. Vous pourrez toujours répondre au clavier.</p>
     <div class="panel" style="margin-top:28px">
-      <label class="check"><input type="checkbox" id="c2" ${c.mic?"checked":""}><span><b>Utiliser mon micro pour dicter mes réponses.</b><small>${API.stt==="kyutai"?"Votre voix est transcrite en direct par notre serveur de transcription (Kyutai STT) ; l’audio n’est ni enregistré ni conservé.":"La voix est convertie en texte par votre navigateur ; aucun audio n’est enregistré."}</small></span></label>
+      <label class="check"><input type="checkbox" id="c2" ${c.mic?"checked":""}><span><b>Utiliser mon micro pour dicter mes réponses.</b><small>${API.stt==="elevenlabs"?"Votre voix est envoyée à ElevenLabs (Scribe) pour être transcrite en direct. La plateforme n’enregistre pas l’audio ; ElevenLabs le traite selon ses propres conditions.":API.stt==="kyutai"?"Votre voix est transcrite en direct par notre serveur de transcription (Kyutai STT) ; l’audio n’est ni enregistré ni conservé.":"La voix est convertie en texte par votre navigateur ; aucun audio n’est enregistré."}</small></span></label>
       <label class="check"><input type="checkbox" id="c3" ${c.cam?"checked":""}><span><b>Afficher ma caméra pendant l’entretien.</b><small>Aperçu local pour vous entraîner au regard caméra ; aucune image n’est enregistrée ni envoyée.</small></span></label>
     </div>
     <div class="nav-row"><button class="btn quiet" data-go="dashboard">Retour</button><button class="btn primary" id="next">Continuer</button></div>
@@ -1305,6 +1333,13 @@ function simConfig(){
     <h2>Configurer la simulation</h2>
     <p class="lede" style="margin-top:12px">Pré-rempli à partir de votre profil. Ces réglages ne concernent que cette simulation.</p>
     <form id="simForm" class="stack" style="margin-top:24px" novalidate>
+      <fieldset class="ob-field"><legend>Votre recruteur</legend>
+        <p class="hint">Choisissez la personne qui mènera l’entretien. Chacun a sa voix et sa façon de relancer.</p>
+        <div class="agent-grid">${(S.agents||LOCAL_AGENTS).map(a=>`<label class="choice radio agent-card ${(P.agent||"lina")===a.id?"on":""}" style="--orb:${esc(a.color)}">
+          <input type="radio" name="agent" value="${esc(a.id)}" ${(P.agent||"lina")===a.id?"checked":""}>
+          <span class="agent-dot" aria-hidden="true"></span><b>${esc(a.name)}</b><small>${esc(a.title)}</small><span class="agent-desc">${esc(a.description)}</span>
+          <button type="button" class="btn quiet sm agent-listen" data-listen="${esc(a.id)}" aria-label="Écouter la voix de ${esc(a.name)}">Écouter</button></label>`).join("")}</div>
+      </fieldset>
       <fieldset class="ob-field"><legend>Questions métier</legend>${suggested?`<p class="hint">Proposé d’après votre métier visé : ${esc(prof.situation.targetJob)}.</p>`:prof?`<p class="hint">Votre métier visé (${esc(prof.situation.targetJob)}) n’a pas encore de banque de questions dédiée : choisissez le plus proche.</p>`:""}
         ${radios("role",Object.fromEntries(Object.entries(ROLES).map(([k,v])=>[k,[v.fr]])),P.role)}<p class="ferr" id="roleErr" hidden>Choisissez un métier pour la simulation.</p></fieldset>
       <fieldset class="ob-field"><legend>Type d’entretien</legend>${radios("type",Object.fromEntries(Object.entries(TYPES).map(([k,v])=>[k,[v.fr,v.hint]])),P.type||"mix")}</fieldset>
@@ -1315,8 +1350,9 @@ function simConfig(){
     </form></section>`;
   const f=$("#simForm");
   f.querySelectorAll("input[type=radio]").forEach(r=>r.onchange=()=>{f.querySelectorAll(`input[name=${r.name}]`).forEach(x=>x.closest(".choice").classList.toggle("on",x.checked))});
-  f.onsubmit=(e)=>{e.preventDefault();const d=new FormData(f);if(!d.get("role")){$("#roleErr").hidden=false;f.querySelector("input[name=role]").focus();return}
-    Object.assign(P,{role:d.get("role"),type:d.get("type"),lang:d.get("lang"),length:d.get("length")});P.level=P.level||"junior";savePrefs();go("prep")};
+  f.querySelectorAll("[data-listen]").forEach(b=>b.onclick=(e)=>{e.preventDefault();const a=agentOf(b.dataset.listen),lang=(new FormData(f)).get("lang")||"fr";speak(a.greeting[lang]||a.greeting.fr,lang,a.id)});
+  f.onsubmit=(e)=>{e.preventDefault();stopVoice();const d=new FormData(f);if(!d.get("role")){$("#roleErr").hidden=false;f.querySelector("input[name=role]").focus();return}
+    Object.assign(P,{agent:d.get("agent")||"lina",role:d.get("role"),type:d.get("type"),lang:d.get("lang"),length:d.get("length")});P.level=P.level||"junior";savePrefs();go("prep")};
 }
 function prep(){
   const P=S.prefs.profile; if(!P.role||!P.level){return go("simConfig")}
@@ -1333,8 +1369,8 @@ function prep(){
         <div class="panel"><h3>Conseils pour vous</h3>
           <ul style="padding-left:20px;margin:12px 0 0">${((P.goals||[]).length?P.goals:["structure"]).map(g=>`<li style="margin:8px 0">${tips[g]}</li>`).join("")}</ul></div>
         <div class="panel"><h3>Réglages</h3>
-          <label class="check"><input type="checkbox" id="voice" ${S.voice?"checked":""}><span><b>Lina lit les questions à voix haute</b><small>${ttsServer(P.lang)?"Voix Kyutai Pocket TTS.":synth?"Synthèse vocale de votre navigateur.":"Non disponible sur ce navigateur."}</small></span></label>
-          ${M.mic?`<label class="check"><input type="checkbox" checked disabled><span><b>Dictée par micro</b><small>${API.stt==="kyutai"?"Transcription en direct par Kyutai STT (français et anglais), sur tous les navigateurs récents.":SR?"Bouton « Dicter ma réponse » pendant l’entretien.":"Non prise en charge par ce navigateur (essayez Chrome ou Edge)."}</small></span></label>`:""}
+          <label class="check"><input type="checkbox" id="voice" ${S.voice?"checked":""}><span><b>Lina lit les questions à voix haute</b><small>${ttsServer(P.lang)?(API.tts==="elevenlabs"?`Voix ElevenLabs de ${esc(agentOf(P.agent).name)}.`:"Voix Kyutai Pocket TTS."):synth?"Synthèse vocale de votre navigateur.":"Non disponible sur ce navigateur."}</small></span></label>
+          ${M.mic?`<label class="check"><input type="checkbox" checked disabled><span><b>Dictée par micro</b><small>${API.stt==="elevenlabs"?"Transcription en direct par ElevenLabs Scribe, sur tous les navigateurs récents.":API.stt==="kyutai"?"Transcription en direct par Kyutai STT (français et anglais), sur tous les navigateurs récents.":SR?"Bouton « Dicter ma réponse » pendant l’entretien.":"Non prise en charge par ce navigateur (essayez Chrome ou Edge)."}</small></span></label>`:""}
           ${M.cam?`<label class="check"><input type="checkbox" id="cam" checked><span><b>Aperçu caméra</b><small>Local uniquement, rien n’est enregistré.</small></span></label>`:""}
           <p style="margin-top:12px"><button class="btn quiet sm" data-go="setup">Modifier micro et caméra</button></p>
         </div>
@@ -1353,7 +1389,7 @@ const useCatalog=()=>API.mode==="remote"&&API.questionSource&&API.questionSource
 async function startSession(planIds,drill=false,custom=null,btn=null){
   const P=S.prefs.profile;
   const L={id:"s_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),status:"in_progress",startedAt:new Date().toISOString(),endedAt:null,role:P.role,level:P.level,type:P.type,lang:P.lang,
-    rubricVersion:RUBRIC_VERSION,consentVersion:"consent-v0.1",plan:planIds||[],custom,idx:0,turns:[],followupAsked:false,pending:null,drill,evaluation:null,source:"builtin"};
+    rubricVersion:RUBRIC_VERSION,consentVersion:"consent-v0.1",plan:planIds||[],custom,idx:0,turns:[],followupAsked:false,pending:null,drill,evaluation:null,source:"builtin",agent:P.agent||"lina"};
   if(!drill&&!custom&&useCatalog()){
     busy(btn,true,"Préparation de l’entretien…");
     try{
@@ -1375,7 +1411,7 @@ function currentQ(L){
   return Q.find(x=>x.id===L.plan[L.idx]);
 }
 const totalQ=(L)=>L.catalog?L.total:L.custom?L.custom.length:L.plan.length;
-function snapshot(){const L=S.live;return {id:L.id,status:L.status,startedAt:L.startedAt,endedAt:L.endedAt,role:L.role,level:L.level,type:L.type,lang:L.lang,rubricVersion:L.rubricVersion,consentVersion:L.consentVersion,plan:L.plan,turns:L.turns,drill:!!L.drill,source:L.source||"builtin",evaluation:L.evaluation||null}}
+function snapshot(){const L=S.live;return {id:L.id,status:L.status,startedAt:L.startedAt,endedAt:L.endedAt,role:L.role,level:L.level,type:L.type,lang:L.lang,rubricVersion:L.rubricVersion,consentVersion:L.consentVersion,plan:L.plan,turns:L.turns,drill:!!L.drill,source:L.source||"builtin",agent:L.agent||"lina",evaluation:L.evaluation||null}}
 let saveChain=Promise.resolve();
 function persist(){
   const snap=snapshot(); const i=S.sessions.findIndex(s=>s.id===snap.id); if(i>=0)S.sessions[i]=snap; else S.sessions.push(snap);
@@ -1390,7 +1426,7 @@ function interview(){
   const q=currentQ(L); const text=L.pending?L.pending.followup:q[L.lang];
   const M=S.prefs.media||{};
   app.innerHTML=`<section class="room">
-    <div>${orbSVG("idle")}${S.cam?`<div class="cam" id="camBox"><video id="camVideo" muted playsinline></video><span>Aperçu local · non enregistré</span></div>`:""}</div>
+    <div>${orbSVG("idle",true,curAgent())}${S.cam?`<div class="cam" id="camBox"><video id="camVideo" muted playsinline></video><span>Aperçu local · non enregistré</span></div>`:""}</div>
     <div>
       <div class="meta"><span>Question ${L.idx+1} sur ${totalQ(L)} · ${esc(q.comp)}${L.catalog?` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`:""}</span><span id="timer">0:00</span></div>
       <div class="progress" aria-hidden="true"><i style="width:${Math.round(L.idx/totalQ(L)*100)}%"></i></div>
@@ -1400,7 +1436,7 @@ function interview(){
       <textarea id="answer" placeholder="${L.lang==="en"?"Answer as you would out loud…":"Répondez comme vous le feriez à l’oral…"}"></textarea>
       <div class="answer-tools">
         <span class="live" id="liveInd"><i></i> <span id="wc">0 mot</span></span>
-        <div class="row">${M.mic&&(sttServer()||SR)?`<button class="btn quiet" id="dictBtn" title="${sttServer()?"Transcription : Kyutai STT (modèle CC-BY 4.0)":"Dictée du navigateur"}">Dicter ma réponse</button>`:""}<button class="btn quiet" id="replay" ${S.voice&&(synth||ttsServer(L.lang))?"":"hidden"}>Réécouter</button></div>
+        <div class="row">${M.mic&&(elevenServer()||sttServer()||SR)?`<button class="btn quiet" id="dictBtn" title="${elevenServer()?"Transcription : ElevenLabs Scribe":sttServer()?"Transcription : Kyutai STT (modèle CC-BY 4.0)":"Dictée du navigateur"}">Dicter ma réponse</button>`:""}<button class="btn quiet" id="replay" ${S.voice&&(synth||ttsServer(L.lang))?"":"hidden"}>Réécouter</button></div>
       </div>
       <div class="nav-row">
         <div class="row"><button class="btn quiet" id="pause">Pause</button><button class="btn quiet" id="end">Terminer</button></div>
@@ -1418,18 +1454,19 @@ function interview(){
   $("#pause").onclick=pauseSession;
   $("#end").onclick=()=>{if(confirm("Terminer maintenant ? Les réponses données seront évaluées."))finish()};
   if(S.cam)startCam();
-  startTimer(); setTimeout(()=>speak(text,L.lang),350);
+  const ag=curAgent(), greet=!L.greeted&&L.idx===0&&!L.pending&&ag.greeting&&(ag.greeting[L.lang]||ag.greeting.fr); L.greeted=true;
+  startTimer(); setTimeout(()=>speak(greet?greet+" "+text:text,L.lang),350);
 }
 let timerH; function startTimer(){clearInterval(timerH);const t0=Date.now();timerH=setInterval(()=>{const el=$("#timer");if(!el)return clearInterval(timerH);const s=Math.floor((Date.now()-t0)/1000);el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`},1000)}
 function updateCount(){const n=words($("#answer").value);$("#wc").textContent=`${n} mot${n>1?"s":""}`;$("#send").disabled=n<3}
 async function submitAnswer(){
-  const L=S.live, ans=$("#answer").value.trim(); if(rec)rec.stop(); if(KYU.state!=="idle")kyuAbort();
+  const L=S.live, ans=$("#answer").value.trim(); if(rec)rec.stop(); if(KYU.state!=="idle")kyuAbort(); if(EL.state!=="idle")elAbort();
   busy($("#send"),true);
   if(L.pending){commitTurn(L.pending.answer+" "+ans,L.pending.followup,ans);return}
   let f=null; const goalsPush=(S.prefs.profile.goals||[]).some(g=>["structure","examples"].includes(g));
   if(!L.followupAsked||goalsPush){
-    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:currentQ(L)[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr})).followup||null}catch(e){f=localFollowup(ans,L.lang)}}
-    else f=localFollowup(ans,L.lang);
+    if(API.ai){try{f=(await call("POST","/api/ai/followup",{question:currentQ(L)[L.lang],answer:ans,lang:L.lang,role:ROLES[L.role].fr,agent:L.agent})).followup||null}catch(e){f=localFollowup(ans,L.lang,L.agent)}}
+    else f=localFollowup(ans,L.lang,L.agent);
   }
   if(f&&L.turns.filter(t=>t.followup).length<3){L.pending={answer:ans,followup:f};L.followupAsked=true;interview();return}
   commitTurn(ans,null,null);
@@ -1489,6 +1526,7 @@ function reportHTML(s,{coachView=false}={}){
       <div class="stack">
         <h2>${coachView?"Résultat de la simulation":E.overall>=75?"Un entretien convaincant.":E.overall>=55?"De bonnes bases, des points à muscler.":"Un premier essai utile pour progresser."}</h2>
         <p class="lede">${esc(ROLES[s.role]?.fr||"")} · ${esc(LEVELS[s.level]?.fr||"")} · ${fmtDate(s.endedAt||s.startedAt)} · ${E.answered} réponses analysées${E.skipped?` · ${E.skipped} passée${E.skipped>1?"s":""}`:""}</p>
+        <p class="hint">Entretien mené par ${esc(agentOf(s.agent).name)} · ${esc(agentOf(s.agent).title)}</p>
         ${s.source&&s.source!=="builtin"?`<p class="notice">Questions issues du référentiel officiel S2-03 (versions figées dans le catalogue). La notation reste celle du POC, en attendant les grilles du Sprint 3.</p>`:""}<p class="notice">Retour d’entraînement calculé avec la grille ${E.rubricVersion}${E.engine==="local+workers-ai"?" ; commentaire rédigé par l’IA":""}. Non validé par un expert ; ce n’est pas une décision de recrutement.</p>
       </div>
     </div>
@@ -1713,50 +1751,51 @@ function rubric(){
 /* =========================================================
    Avatar, voix, caméra
    ========================================================= */
-function orbSVG(state="idle",name=true){
-  return `<div class="orb ${state}" id="orb" aria-hidden="true"><svg viewBox="0 0 400 400">
+function orbSVG(state="idle",name=true,agent=null){
+  return `<div class="orb ${state}" id="orb" aria-hidden="true" ${agent?`style="--orb:${esc(agent.color)}"`:""}><svg viewBox="0 0 400 400">
     <circle class="ring" cx="200" cy="200" r="178" stroke-width="2" opacity=".35"/><circle class="ring" cx="200" cy="200" r="146" stroke-width="3" opacity=".5"/>
     <circle class="ring" cx="200" cy="200" r="114" stroke-width="5" opacity=".7"/><circle class="ring" cx="200" cy="200" r="84" stroke-width="8"/>
     <circle class="core" cx="200" cy="200" r="56"/><circle class="spark" cx="200" cy="200" r="16"/></svg>
-    ${name?`<div class="name">Lina<small>votre recruteuse virtuelle</small></div>`:""}</div>`;
+    ${name?`<div class="name">${esc(agent?agent.name:"Lina")}<small>${esc(agent?agent.title:"votre recruteuse virtuelle")}</small></div>`:""}</div>`;
 }
 function setOrb(state){const o=$("#orb");if(o){o.classList.remove("idle","speaking","listening");o.classList.add(state)}}
 const synth=window.speechSynthesis;
 /* Voix de Lina : Kyutai Pocket TTS via notre serveur si configuré, sinon voix du navigateur. */
-const ttsServer=(lang)=>API.mode==="remote"&&API.tts==="pocket-tts"&&(API.ttsLanguages||[]).includes(lang||"fr");
+const ttsServer=(lang)=>API.mode==="remote"&&["pocket-tts","elevenlabs"].includes(API.tts)&&(API.ttsLanguages||[]).includes(lang||"fr");
 let ttsAudio=null;
 function stopTts(){const a=ttsAudio;ttsAudio=null;if(a){try{a.pause();a.removeAttribute("src");a.load()}catch(e){}}}
-function speak(text,lang){
-  if(!S.voice){setOrb("listening");return}
+function speak(text,lang,agentId){
+  if(!S.voice&&!agentId){setOrb("listening");return}
+  agentId=agentId||curAgent().id;
   stopTts(); try{synth&&synth.cancel()}catch(e){}
-  if(ttsServer(lang))return speakServer(text,lang);
-  speakBrowser(text,lang);
+  if(ttsServer(lang))return speakServer(text,lang,agentId);
+  speakBrowser(text,lang,agentId);
 }
-function speakServer(text,lang){
-  const a=new Audio(`/api/tts?lang=${lang==="en"?"en":"fr"}&text=${encodeURIComponent(text)}`); ttsAudio=a; let started=false;
+function speakServer(text,lang,agentId){
+  const a=new Audio(`/api/tts?lang=${lang==="en"?"en":"fr"}&agent=${encodeURIComponent(agentId||"")}&text=${encodeURIComponent(text)}`); ttsAudio=a; let started=false;
   a.onplaying=()=>{if(ttsAudio===a){started=true;setOrb("speaking")}};
   a.onended=()=>{if(ttsAudio===a){ttsAudio=null;setOrb("listening")}};
-  a.onerror=()=>{if(ttsAudio!==a)return;ttsAudio=null;if(!started&&synth)speakBrowser(text,lang);else setOrb("listening")};
+  a.onerror=()=>{if(ttsAudio!==a)return;ttsAudio=null;if(!started&&synth)speakBrowser(text,lang,agentId);else setOrb("listening")};
   a.play().catch(()=>{if(ttsAudio===a){ttsAudio=null;setOrb("listening")}});
 }
-function speakBrowser(text,lang){
+function speakBrowser(text,lang,agentId){
   if(!synth){setOrb("listening");return}
-  synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang=lang==="en"?"en-GB":"fr-FR"; u.rate=1.02;
+  synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang=lang==="en"?"en-GB":"fr-FR"; const bv=BROWSER_VOICE[agentId]||{pitch:1,rate:1.02}; u.rate=bv.rate; u.pitch=bv.pitch;
   const v=synth.getVoices().find(v=>v.lang.startsWith(u.lang.slice(0,2))); if(v)u.voice=v;
   u.onstart=()=>setOrb("speaking"); u.onend=()=>setOrb("listening"); u.onerror=()=>setOrb("listening"); synth.speak(u);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null;
-function stopVoice(){stopTts();try{synth&&synth.cancel()}catch(e){} if(rec){try{rec.stop()}catch(e){} rec=null} kyuAbort(); stopCam()}
+function stopVoice(){stopTts();try{synth&&synth.cancel()}catch(e){} if(rec){try{rec.stop()}catch(e){} rec=null} kyuAbort(); elAbort(); stopCam()}
 
 /* ---------- Transcription Kyutai STT (via notre serveur) ---------- */
 const sttServer=()=>API.mode==="remote"&&API.stt==="kyutai"&&!!window.WebSocket&&!!(window.AudioContext||window.webkitAudioContext);
 const KYU={ws:null,ctx:null,stream:null,node:null,words:[],base:"",state:"idle"};
-const PCM_WORKLET=`class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.b=new Float32Array(1920);this.n=0;this.t=0}
+const PCM_WORKLET=`class P extends AudioWorkletProcessor{constructor(o){super();this.r=o.processorOptions.ratio;this.F=o.processorOptions.frame||1920;this.b=new Float32Array(this.F);this.n=0;this.t=0}
 process(inputs){const ch=inputs[0]&&inputs[0][0];if(!ch)return true;
  if(this.r===1){for(let i=0;i<ch.length;i++)this.push(ch[i])}
  else{while(this.t<ch.length-1){const i=Math.floor(this.t),f=this.t-i;this.push(ch[i]*(1-f)+ch[i+1]*f);this.t+=this.r}this.t-=ch.length}
  return true}
-push(v){this.b[this.n++]=v;if(this.n===1920){this.port.postMessage(this.b.slice(0));this.n=0}}}
+push(v){this.b[this.n++]=v;if(this.n===this.F){this.port.postMessage(this.b.slice(0));this.n=0}}}
 registerProcessor("pcm24k",P)`;
 function kyuUi(label,on){const btn=$("#dictBtn"),live=$("#liveInd");if(btn){btn.textContent=label;btn.disabled=label.endsWith("…")}if(live){live.classList.toggle("on",!!on)}}
 function kyuAbort(){const k=KYU;try{k.node&&k.node.disconnect()}catch(e){}try{k.ctx&&k.ctx.close()}catch(e){}try{k.stream&&k.stream.getTracks().forEach(t=>t.stop())}catch(e){}try{k.ws&&k.ws.readyState<2&&k.ws.close()}catch(e){}Object.assign(KYU,{ws:null,ctx:null,stream:null,node:null,state:"idle"})}
@@ -1783,7 +1822,7 @@ async function kyuAudio(){
   KYU.ctx=ctx; const url=URL.createObjectURL(new Blob([PCM_WORKLET],{type:"text/javascript"}));
   await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
   const src=ctx.createMediaStreamSource(KYU.stream);
-  const node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/24000}}); KYU.node=node;
+  const node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/24000,frame:1920}}); KYU.node=node;
   node.port.onmessage=(e)=>{if(KYU.ws&&KYU.ws.readyState===1&&KYU.state==="live")KYU.ws.send(e.data.buffer)};
   const mute=ctx.createGain(); mute.gain.value=0; src.connect(node); node.connect(mute); mute.connect(ctx.destination);
   KYU.state="live"; kyuUi("Arrêter la dictée",true);
@@ -1795,7 +1834,48 @@ function kyuStop(){
   try{KYU.ws.send(JSON.stringify({type:"stop"}))}catch(e){}
   setTimeout(()=>{if(KYU.state==="stopping"){kyuAbort();kyuUi("Dicter ma réponse",false)}},6000);
 }
+/* ---------- Dictée ElevenLabs Scribe v2 Realtime : connexion directe avec un jeton à usage unique ---------- */
+const elevenServer=()=>API.mode==="remote"&&API.stt==="elevenlabs"&&API.sttMode==="token"&&!!window.WebSocket&&!!(window.AudioContext||window.webkitAudioContext);
+const EL={ws:null,ctx:null,stream:null,node:null,state:"idle",base:"",committed:[],partial:""};
+function elAbort(){const k=EL;try{k.node&&k.node.disconnect()}catch(e){}try{k.ctx&&k.ctx.close()}catch(e){}try{k.stream&&k.stream.getTracks().forEach(t=>t.stop())}catch(e){}try{k.ws&&k.ws.readyState<2&&k.ws.close()}catch(e){}Object.assign(EL,{ws:null,ctx:null,stream:null,node:null,state:"idle"})}
+function elRender(){const t=$("#answer");if(!t)return;t.value=(EL.base+[...EL.committed,EL.partial].filter(Boolean).join(" ")).replace(/\s+([,.;:!?])/g,"$1");updateCount()}
+function toB64(i16){const u=new Uint8Array(i16.buffer);let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)}
+async function elStart(){
+  EL.state="connecting"; kyuUi("Connexion…",false);
+  let tk;
+  try{tk=await call("POST","/api/stt/token",{lang:S.live.lang})}
+  catch(e){EL.state="idle";kyuUi("Dicter ma réponse",false);if(SR){toast("Dictée ElevenLabs indisponible : dictée du navigateur.");return browserDictation()}return toast(e.message)}
+  try{EL.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}})}
+  catch(e){elAbort();kyuUi("Dicter ma réponse",false);toast("Micro refusé par le navigateur. Vous pouvez répondre au clavier.");return}
+  const ta=$("#answer"); EL.base=ta.value?ta.value.trim()+" ":""; EL.committed=[]; EL.partial="";
+  const ws=new WebSocket(tk.url); EL.ws=ws; let started=false;
+  ws.onmessage=async(e)=>{let m;try{m=JSON.parse(e.data)}catch(_){return}const t=m.message_type||"";
+    if(t==="session_started"&&!started){started=true;try{await elAudio(tk.sampleRate||16000)}catch(err){toast("Capture audio impossible sur ce navigateur.");elAbort();kyuUi("Dicter ma réponse",false)}}
+    else if(t==="partial_transcript"){EL.partial=m.text||"";elRender()}
+    else if(t==="committed_transcript"){if(m.text)EL.committed.push(m.text);EL.partial="";elRender();const l=$("#liveInd span:last-child");if(l)l.textContent="Phrase enregistrée";if(EL.state==="stopping"){elAbort();kyuUi("Dicter ma réponse",false)}}
+    else if(/error|limit|quota|exceeded|throttled/.test(t)){toast(m.error||"Transcription interrompue. Vous pouvez répondre au clavier.")}};
+  ws.onclose=()=>{const was=started;elAbort();kyuUi("Dicter ma réponse",false);
+    if(!was){if(SR){toast("Dictée ElevenLabs indisponible : dictée du navigateur.");browserDictation()}else toast("Service de transcription indisponible. Vous pouvez répondre au clavier.")}};
+}
+async function elAudio(rate){
+  const AC=window.AudioContext||window.webkitAudioContext; let ctx; try{ctx=new AC({sampleRate:rate})}catch(e){ctx=new AC()}
+  EL.ctx=ctx; const url=URL.createObjectURL(new Blob([PCM_WORKLET],{type:"text/javascript"})); await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
+  const src=ctx.createMediaStreamSource(EL.stream), node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/rate,frame:rate/10}}); EL.node=node;
+  node.port.onmessage=(e)=>{if(!(EL.ws&&EL.ws.readyState===1&&EL.state==="live"))return;const f=e.data,i16=new Int16Array(f.length);
+    for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));i16[i]=v<0?v*0x8000:v*0x7FFF}
+    EL.ws.send(JSON.stringify({message_type:"input_audio_chunk",audio_base_64:toB64(i16),commit:false,sample_rate:rate}))};
+  const mute=ctx.createGain(); mute.gain.value=0; src.connect(node); node.connect(mute); mute.connect(ctx.destination);
+  EL.state="live"; kyuUi("Arrêter la dictée",true);
+}
+function elStop(){
+  if(EL.state!=="live")return elAbort();
+  EL.state="stopping"; kyuUi("Finalisation…",false);
+  try{EL.stream.getTracks().forEach(t=>t.stop())}catch(e){}
+  try{EL.ws.send(JSON.stringify({message_type:"input_audio_chunk",audio_base_64:"",commit:true,sample_rate:16000}))}catch(e){}
+  setTimeout(()=>{if(EL.state==="stopping"){elAbort();kyuUi("Dicter ma réponse",false)}},2500);
+}
 function toggleDictation(){
+  if(elevenServer()){return EL.state==="idle"?elStart():elStop()}
   if(sttServer()){return KYU.state==="idle"?kyuStart():kyuStop()}
   browserDictation();
 }

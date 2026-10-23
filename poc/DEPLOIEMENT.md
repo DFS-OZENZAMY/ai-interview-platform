@@ -68,6 +68,29 @@ Ou image seule avec SQLite : `docker build -t repetition . && docker run -p 8080
 
 Le jeton personnel Supabase (`sbp_…`) n’est **pas** nécessaire au fonctionnement de l’application.
 
+## Voix, dictée et recruteurs avec ElevenLabs (configuration par défaut sur Cloudflare)
+
+Le candidat **choisit son recruteur** avant chaque simulation, et peut écouter sa voix :
+
+| Agent | Profil | Style de relance |
+| --- | --- | --- |
+| Lina | Recruteuse RH bienveillante | douce, invite à développer |
+| Karim | Manager technique exigeant | précisions concrètes, outils, résultats mesurés |
+| Sofia | DRH pressée | très courte, exige des chiffres |
+| Adam | Coach pédagogue | guide vers la méthode STAR |
+
+Chaque agent a sa voix ElevenLabs, sa phrase d’accueil et son style, appliqué aux relances locales comme à celles de l’IA. Le rapport indique qui a mené l’entretien.
+
+- **Voix (TTS)** : `POST /v1/text-to-speech/{voice}/stream`, modèle `eleven_flash_v2_5` (faible latence, français et anglais), MP3 diffusé en streaming et mis en cache par agent. La voix est choisie **par le serveur** à partir de l’agent ; le navigateur ne voit jamais les identifiants de voix ni la clé.
+- **Dictée (Scribe v2 Realtime)** : le serveur émet un **jeton à usage unique** (15 min) ; le navigateur se connecte directement à `wss://api.elevenlabs.io/v1/speech-to-text/realtime` (PCM 16 kHz, détection de fin de phrase côté ElevenLabs). L’audio ne passe pas par notre serveur et la clé ne quitte jamais le serveur. 30 jetons par candidat et par 10 minutes au maximum.
+- **Vie privée** : le texte du consentement micro indique que la voix est envoyée à ElevenLabs, qui la traite selon ses propres conditions (la rétention zéro n’est disponible que sur les offres entreprise).
+
+**Activer :** dans Cloudflare › Worker › Settings › **Variables and Secrets**, ajouter le **secret** `ELEVENLABS_API_KEY`. `TTS_PROVIDER` et `STT_PROVIDER` valent déjà `elevenlabs` dans `wrangler.jsonc`. Sans clé, tout reste fonctionnel avec la voix et la dictée du navigateur.
+
+**Personnaliser les voix :** `ELEVENLABS_VOICE_LINA`, `ELEVENLABS_VOICE_KARIM`… (identifiants de voix de votre compte ElevenLabs), ou `AGENTS_JSON` pour modifier ou ajouter des recruteurs. Les voix par défaut sont des voix prédéfinies d’ElevenLabs ; à écouter et valider en français.
+
+**Tests :** `tests/mock_elevenlabs.py` reproduit l’API (clé, MP3 réel via ffmpeg, jetons à usage unique, protocole Scribe) ; `tests/elevenlabs_api_test.py` 14/14 sur Node **et** Cloudflare Workers ; parcours navigateur avec micro simulé : choix de Karim, écoute, voix MP3, dictée en direct, relance au style de Karim, rapport ; la clé n’apparaît jamais côté navigateur. **Non testé :** le vrai service ElevenLabs (inaccessible depuis l’environnement de développement).
+
 ## Transcription vocale Kyutai STT
 
 [Kyutai STT](https://kyutai.org/stt/) (laboratoire parisien, open source) remplace la dictée du navigateur, qui ne fonctionnait que sous Chrome et Edge et envoyait la voix aux serveurs de Google ou d’Apple. Modèle utilisé : `kyutai/stt-1b-en_fr` (français et anglais, environ 0,5 s de latence, ponctuation, détection sémantique de fin de parole).
@@ -112,7 +135,9 @@ Ou bien `docker compose --profile voix up -d` (service `voix-fr` ; **non testé*
 
 **Tests :** `tests/mock_pocket_tts.py` imite `pocket-tts serve` (multipart `text` / `voice_url`, WAV en streaming) ; `tests/tts_api_test.py` 11/11 sur Node **et** Cloudflare Workers (premiers octets en ~20 ms, cache en ~10 ms, voix imposée, limite de débit) ; parcours navigateur : Lina parle via Pocket TTS, y compris les relances, avec repli propre si le service est coupé. **Non testé :** le vrai modèle (Hugging Face inaccessible depuis l’environnement de développement) ; la voix réelle reste à écouter et à valider par l’équipe.
 
-### Voix de Lina directement sur Cloudflare (Containers)
+### Variante : Pocket TTS dans Cloudflare Containers (désactivée par défaut)
+
+Remplacée par ElevenLabs dans la configuration par défaut. Pour la réactiver, rajouter dans `wrangler.jsonc` les blocs `containers`, `durable_objects` et `migrations` décrits ci-dessous, avec `TTS_PROVIDER=pocket-tts` (forfait Workers Paid et permission Containers requis).
 
 Workers AI ne propose pas Kyutai ; Pocket TTS tourne donc dans **Cloudflare Containers**, attaché au Worker de la plateforme. Tout est déjà déclaré dans `wrangler.jsonc` (racine et `poc/`) : rien d’autre à héberger.
 

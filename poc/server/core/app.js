@@ -18,6 +18,7 @@
 
 import { validateProfile, suggestedSkills, PROFILE_VERSION } from "./profile-contract.js";
 import { planSlots, relaxations, candidateUuid, CATEGORY_LABELS } from "../questions/index.js";
+import { publicAgent } from "../agents.js";
 
 const SESSION_DAYS = 7;
 const PBKDF2_ITER = 100000;
@@ -455,10 +456,14 @@ async function textToSpeech(url, user, env, ctx) {
   if (recent.length >= TTS_MAX_PER_WINDOW) throw new HttpError(429, "too_many_requests", "Trop de demandes de voix. Réessayez dans quelques minutes.");
   recent.push(t); ttsHits.set(user.id, recent);
   const headers = { "content-type": "audio/wav", "cache-control": "private, max-age=3600", "x-content-type-options": "nosniff" };
-  const key = lang + "|" + text, hit = ttsCache.get(key);
+  // Voix de l'agent choisi : identifiant validé contre le catalogue serveur (le navigateur ne fournit jamais d'ID de voix).
+  const agents = env.AGENTS || [], agent = agents.find((a) => a.id === url.searchParams.get("agent")) || agents[0] || null;
+  if (env.TTS.perAgentVoice && !agent) throw new HttpError(503, "tts_unavailable", "Aucun agent vocal configuré.");
+  headers["content-type"] = env.TTS.contentType || "audio/wav";
+  const key = (env.TTS.perAgentVoice ? agent.id + "|" : "") + lang + "|" + text, hit = ttsCache.get(key);
   if (hit) { ttsCache.delete(key); ttsCache.set(key, hit); return new Response(hit, { headers: { ...headers, "x-tts-cache": "hit" } }); }
   let up;
-  try { up = await env.TTS.synthesize(text, lang); }
+  try { up = await env.TTS.synthesize(text, lang, env.TTS.perAgentVoice ? { voice: agent.voice } : {}); }
   catch (e) { console.error("tts_error", e && e.message); throw new HttpError(503, "tts_unavailable", "La voix de Lina est momentanément indisponible."); }
   // Streaming vers le navigateur (la lecture démarre pendant la génération) + copie pour le cache.
   const [toClient, toCache] = up.body.tee();
@@ -472,6 +477,18 @@ async function textToSpeech(url, user, env, ctx) {
   return new Response(toClient, { headers: { ...headers, "x-tts-cache": "miss" } });
 }
 
+/* Transcription ElevenLabs : jeton à usage unique (15 min), la clé reste sur le serveur */
+const sttHits = new Map();
+async function sttToken(req, user, env) {
+  if (!env.STT || env.STT.mode !== "token") throw new HttpError(404, "stt_unavailable", "Transcription serveur non configurée.");
+  const b = await body(req);
+  const t = Date.now(), recent = (sttHits.get(user.id) || []).filter((x) => t - x < 10 * 60 * 1000);
+  if (recent.length >= 30) throw new HttpError(429, "too_many_requests", "Trop de demandes de dictée. Réessayez dans quelques minutes.");
+  recent.push(t); sttHits.set(user.id, recent);
+  try { return json(await env.STT.token(b.lang === "en" ? "en" : "fr")); }
+  catch (e) { console.error("stt_token_error", e && e.message); throw new HttpError(503, "stt_unavailable", "La dictée est momentanément indisponible."); }
+}
+
 /* IA */
 async function ask(env, system, user, maxTokens) {
   return String((await env.AI.complete({ system, user, maxTokens, temperature: 0.4 })) || "").trim();
@@ -481,7 +498,8 @@ async function aiFollowup(req, env) {
   const system = en
     ? "You are a professional recruiter running a practice interview. Given a question and the candidate's answer, decide if ONE short follow-up is useful (missing concrete example, personal action, or measurable result). Reply ONLY with the follow-up question (max 25 words), or exactly NONE if the answer is complete. Never evaluate or score."
     : "Tu es une recruteuse professionnelle qui mène un entretien d'entraînement. À partir de la question et de la réponse du candidat, décide si UNE courte relance est utile (exemple concret, action personnelle ou résultat mesurable manquant). Réponds UNIQUEMENT par la question de relance (25 mots max), ou exactement AUCUNE si la réponse est complète. Ne note jamais le candidat.";
-  const out = await ask(env, system, `Poste: ${clip(b.role)}\nQuestion: ${clip(b.question)}\nRéponse: ${clip(b.answer)}`, 80);
+  const agent = (env.AGENTS || []).find((a) => a.id === b.agent);
+  const out = await ask(env, (agent ? agent.style + " " : "") + system, `Poste: ${clip(b.role)}\nQuestion: ${clip(b.question)}\nRéponse: ${clip(b.answer)}`, 80);
   return json({ followup: !out || /^(none|aucune)\b/i.test(out) ? null : out.replace(/^["«\s]+|["»\s]+$/g, "") });
 }
 async function aiFeedback(req, env) {
@@ -497,7 +515,7 @@ async function aiFeedback(req, env) {
 /* Routeur */
 async function route(req, env, url, ctx) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [] });
+  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", sttMode: env.STT ? env.STT.mode || "relay" : null, tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [], agentVoices: !!(env.TTS && env.TTS.perAgentVoice) });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {
@@ -523,6 +541,8 @@ async function route(req, env, url, ctx) {
   if (p === "/api/profile" && m === "PUT") return updateProfile(req, need(user, "candidate"), env);
   if (p === "/api/ai/suggest-skills" && m === "POST") { need(user, "candidate"); if (!env.AI) throw new HttpError(503, "ai_unavailable"); return aiSuggestSkills(req, env); }
   if (p === "/api/tts" && m === "GET") return textToSpeech(url, need(user, "candidate"), env, ctx);
+  if (p === "/api/agents" && m === "GET") { need(user); return json({ agents: (env.AGENTS || []).map(publicAgent), voices: !!(env.TTS && env.TTS.perAgentVoice) }); }
+  if (p === "/api/stt/token" && m === "POST") return sttToken(req, need(user, "candidate"), env);
   if (p === "/api/tts/warmup" && m === "POST") {
     need(user, "candidate");
     if (env.TTS && env.TTS.warmup) { const w = env.TTS.warmup().catch(() => false); if (ctx && ctx.waitUntil) ctx.waitUntil(w); }

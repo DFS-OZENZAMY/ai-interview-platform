@@ -13,6 +13,7 @@ import { createAI } from "../ai/index.js";
 import { createQuestionSource } from "../questions/index.js";
 import { createSttProvider, openSttSession } from "../stt/index.js";
 import { createTtsProvider } from "../tts/index.js";
+import { loadAgents } from "../agents.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const env = process.env;
@@ -67,6 +68,7 @@ const api = createApp({
   QUESTIONS: questions,
   STT: stt,
   TTS: createTtsProvider(env),
+  AGENTS: loadAgents(env),
   COACH_INVITE_CODE: env.COACH_INVITE_CODE,
   COOKIE_SECURE: env.COOKIE_SECURE ? env.COOKIE_SECURE !== "false" : !!(env.PUBLIC_URL || "").startsWith("https"),
   RUNTIME: env.RUNTIME_LABEL || "node",
@@ -97,7 +99,7 @@ const server = createServer(async (req, res) => {
 });
 
 /* Transcription vocale en continu : WebSocket /api/stt/stream relayé vers Kyutai (clé côté serveur). */
-if (stt) {
+if (stt && stt.mode !== "token") {   // relais WebSocket (Kyutai) ; ElevenLabs utilise des jetons, sans relais
   const { WebSocketServer, WebSocket } = await import("ws").catch(() => { throw new Error("Installez le module : npm install ws"); });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
   const active = new Map();   // une seule dictée à la fois par utilisateur

@@ -14,6 +14,7 @@ const MAX_SECONDS = 15 * 60, MAX_FRAME_BYTES = FRAME * 4 * 4;
 export function createSttProvider(cfg = {}) {
   const kind = (cfg.STT_PROVIDER || "browser").toLowerCase();
   if (kind === "browser") return null;
+  if (kind === "elevenlabs") return elevenLabsStt(cfg);
   if (kind !== "kyutai") throw new Error(`STT_PROVIDER inconnu : ${kind}`);
   if (!cfg.KYUTAI_STT_URL) throw new Error("STT_PROVIDER=kyutai exige KYUTAI_STT_URL (ex. wss://stt.exemple.ma)");
   let url = cfg.KYUTAI_STT_URL.replace(/\/+$/, ""); if (!/\/api\/asr-streaming$/.test(url)) url += "/api/asr-streaming";
@@ -67,5 +68,26 @@ export async function openSttSession({ provider, connectUpstream, sendToClient, 
       sendToClient({ type: "done" }); finish("stopped");
     },
     close: () => finish("client_closed"),
+  };
+}
+
+/**
+ * ElevenLabs Scribe v2 Realtime. Le navigateur se connecte DIRECTEMENT à ElevenLabs avec un jeton à usage
+ * unique (15 min) émis par notre serveur : la clé API ne quitte jamais le serveur et l'audio ne transite pas par lui.
+ */
+function elevenLabsStt(cfg) {
+  if (!cfg.ELEVENLABS_API_KEY) { console.warn("STT_PROVIDER=elevenlabs sans ELEVENLABS_API_KEY : dictée du navigateur"); return null; }
+  const base = (cfg.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io").replace(/\/+$/, "");
+  const wsBase = base.replace(/^http/, "ws");
+  return {
+    name: "elevenlabs", mode: "token", languages: ["fr", "en"],
+    async token(lang) {
+      const r = await fetch(`${base}/v1/single-use-token/realtime_scribe`, { method: "POST", headers: { "xi-api-key": cfg.ELEVENLABS_API_KEY } });
+      if (!r.ok) throw new Error("stt_token_http_" + r.status);
+      const { token } = await r.json();
+      if (!token) throw new Error("stt_token_missing");
+      const q = new URLSearchParams({ model_id: "scribe_v2_realtime", token, audio_format: "pcm_16000", commit_strategy: "vad", language_code: lang === "en" ? "en" : "fr" });
+      return { url: `${wsBase}/v1/speech-to-text/realtime?${q}`, sampleRate: 16000, expiresInSec: 900 };
+    },
   };
 }
