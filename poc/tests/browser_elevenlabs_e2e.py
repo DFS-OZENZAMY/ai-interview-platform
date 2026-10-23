@@ -25,7 +25,7 @@ async def main():
     await pg.click("#simForm [type=submit]"); await pg.wait_for_timeout(300)
     print("réglage voix :", (await pg.text_content("label:has(#voice) small")).strip())
     await pg.click("#go"); await pg.wait_for_timeout(700)
-    print("recruteur affiché :", (await pg.text_content(".orb .name")).strip())
+    print("recruteur affiché :", (await pg.text_content(".stage-id b")).strip(), "·", (await pg.text_content(".stage-id span")).strip())
     st=[]
     for _ in range(10): await pg.wait_for_timeout(250); st.append((await pg.get_attribute("#orb","class")).split()[-1])
     print("Karim parle :", "speaking" in st)

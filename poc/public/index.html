@@ -405,6 +405,67 @@ dialog{max-width:600px}
 .voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:18px}
 .voice-card .req-top b{font-family:var(--display);font-size:1.15rem}
 .sm-select{min-height:38px;padding:4px 10px;min-width:0;flex:0 1 auto}
+
+/* ===== Studio d'entretien ===== */
+.studio{display:grid;grid-template-columns:minmax(300px,0.95fr) 1.05fr;gap:22px;align-items:stretch}
+.stage{position:relative;border-radius:28px;overflow:hidden;color:#EEF3F1;min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 22px 30px;
+  background:radial-gradient(120% 80% at 50% 38%,color-mix(in srgb,var(--orb) 45%,#0B1014) 0%,#0B1014 62%),#0B1014;box-shadow:0 30px 60px -30px color-mix(in srgb,var(--orb) 70%,transparent)}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 40% at 50% 110%,color-mix(in srgb,var(--orb) 30%,transparent),transparent 70%)}
+.stage-top{position:absolute;top:18px;left:20px;right:20px;display:flex;align-items:center;gap:10px;font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;opacity:.85}
+.rec-dot{width:9px;height:9px;border-radius:50%;background:#FF5A4F;box-shadow:0 0 0 0 rgba(255,90,79,.6);animation:recp 1.8s infinite}
+@keyframes recp{0%{box-shadow:0 0 0 0 rgba(255,90,79,.6)}70%{box-shadow:0 0 0 10px rgba(255,90,79,0)}100%{box-shadow:0 0 0 0 rgba(255,90,79,0)}}
+.stage-timer{margin-left:auto;font-variant-numeric:tabular-nums;text-transform:none;letter-spacing:0}
+.avatar-wrap{position:relative;width:min(100%,360px);aspect-ratio:1;margin-top:18px}
+.avatar-wrap canvas{width:100%;height:100%;display:block}
+.avatar-wrap .initial{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:800;font-size:clamp(2.6rem,6vw,3.6rem);color:rgba(255,255,255,.92);text-shadow:0 2px 18px rgba(0,0,0,.35);pointer-events:none}
+.stage-id{text-align:center;display:grid;gap:2px;margin-top:6px;z-index:1}
+.stage-id b{font-family:var(--display);font-size:1.6rem;letter-spacing:-.01em}
+.stage-id span{opacity:.75;font-size:.95rem}
+.stage-state{font-style:normal;margin-top:10px;justify-self:center;font-size:.85rem;padding:4px 12px;border-radius:99px;background:rgba(255,255,255,.1);backdrop-filter:blur(6px)}
+.stage-state[data-s="speaking"]{background:color-mix(in srgb,var(--orb) 55%,rgba(255,255,255,.12))}
+.stage-state[data-s="listening"]{background:rgba(240,180,85,.28);color:#FFE3B5}
+.captions{z-index:1;margin-top:18px;max-width:34ch;text-align:center;font-family:var(--display);font-size:clamp(1.05rem,1.9vw,1.25rem);line-height:1.4;min-height:3.6em}
+.captions span{opacity:.28;transition:opacity .2s}.captions span.on{opacity:1}
+.cam.pip{position:absolute;right:16px;top:50px;width:112px;max-width:28%;aspect-ratio:3/4;margin:0;border:2px solid rgba(255,255,255,.25);border-radius:16px;z-index:2;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.cam.pip span{font-size:.68rem;color:#fff;background:rgba(0,0,0,.55);left:6px;bottom:6px;right:6px;text-align:center}
+.convo{display:flex;flex-direction:column;min-height:560px;background:var(--surface);border:1px solid var(--line);border-radius:28px;overflow:hidden}
+.convo-head{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:6px;list-style:none;margin:0;padding:0}
+.dots li{width:22px;height:6px;border-radius:6px;background:var(--line)}
+.dots li.done{background:var(--orb)}.dots li.now{background:color-mix(in srgb,var(--orb) 45%,var(--line));animation:breathe 2s ease-in-out infinite}
+.thread{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;max-height:46vh;scroll-behavior:smooth}
+.bubble{max-width:86%;padding:12px 16px;border-radius:20px;line-height:1.5;animation:pop .35s ease-out both}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+.bubble .who{display:block;font-size:.75rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;opacity:.65;margin-bottom:3px}
+.bubble p{margin:0}
+.bubble.rec{align-self:flex-start;background:var(--mist);border-bottom-left-radius:6px}
+.bubble.rec.relance{background:color-mix(in srgb,var(--orb) 12%,var(--mist))}
+.bubble.rec.current{background:color-mix(in srgb,var(--orb) 16%,var(--surface));border:1.5px solid color-mix(in srgb,var(--orb) 45%,transparent)}
+.bubble.rec.current .qtext{font-family:var(--display);font-size:clamp(1.15rem,2vw,1.4rem);font-weight:600;line-height:1.3;margin:0;color:var(--ink)}
+.bubble.me{align-self:flex-end;background:var(--orb);color:#fff;border-bottom-right-radius:6px}
+.bubble.me.skipped{background:var(--mist);color:var(--muted);font-style:italic}
+.bubble.me.draft{opacity:.75;border:1.5px dashed rgba(255,255,255,.6)}
+.composer{border-top:1px solid var(--line);padding:14px 16px 12px;background:color-mix(in srgb,var(--paper) 50%,var(--surface))}
+.composer textarea{min-height:96px;border-radius:16px}
+.composer-bar{display:flex;align-items:center;gap:12px;margin-top:10px}
+.composer-bar .live{margin-right:auto}
+.mic-btn{position:relative;display:inline-flex;align-items:center;gap:10px;border:0;border-radius:99px;padding:8px 18px 8px 8px;background:var(--orb);color:#fff;font-weight:700;cursor:pointer;min-height:52px}
+.mic-btn svg{position:relative;z-index:1;width:36px;height:36px;padding:7px;border-radius:50%;background:rgba(255,255,255,.18);fill:#fff}
+.mic-btn .mic-ring{position:absolute;left:8px;top:8px;width:36px;height:36px;border-radius:50%;background:rgba(240,180,85,.55);transform:scale(1);transition:transform .08s linear;opacity:0}
+.mic-btn.on{background:#C2410C}.mic-btn.on .mic-ring{opacity:1}
+.mic-btn:disabled{opacity:.7;cursor:progress}
+.composer-tools{display:flex;flex-wrap:wrap;gap:4px 18px;margin-top:10px}
+.link-btn{background:none;border:0;padding:4px 0;color:var(--muted);cursor:pointer;font:inherit;font-size:.92rem;text-decoration:underline;text-underline-offset:3px;text-decoration-color:transparent}
+.link-btn:hover{color:var(--ink);text-decoration-color:currentColor}.link-btn.danger:hover{color:var(--plum)}
+@media (max-width:900px){
+  .studio{grid-template-columns:1fr}
+  .stage{min-height:0;padding:54px 16px 20px}
+  .avatar-wrap{width:min(62vw,240px);margin-top:0}
+  .captions{min-height:0;margin-top:10px}
+  .convo{min-height:0}.thread{max-height:42vh}
+  .cam.pip{width:72px;top:46px}
+}
+@media (prefers-reduced-motion:reduce){.bubble,.rec-dot,.dots li.now{animation:none!important}}
 </style>
 </head>
 <body>
@@ -420,7 +481,7 @@ dialog{max-width:600px}
 <dialog id="dlg"></dialog>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script>
-/* Répétition — POC AI Interview Platform (v10 : voix réalistes ElevenLabs) */
+/* Répétition — POC AI Interview Platform (v11 : studio d’entretien) */
 const RUBRIC_VERSION = "v1.0";
 /* ==========================================================================
    Contrat de profil candidat — candidate-profile-v1 (S2-01 → S2-02)
@@ -1434,27 +1495,44 @@ function interview(){
   const L=S.live; if(!L){go("home");return}
   if(L.awaitingNext)return renderNextRetry();
   const q=currentQ(L); const text=L.pending?L.pending.followup:q[L.lang];
-  const M=S.prefs.media||{};
-  app.innerHTML=`<section class="room">
-    <div>${orbSVG("idle",true,curAgent())}${S.cam?`<div class="cam" id="camBox"><video id="camVideo" muted playsinline></video><span>Aperçu local · non enregistré</span></div>`:""}</div>
-    <div>
-      <div class="meta"><span>Question ${L.idx+1} sur ${totalQ(L)} · ${esc(q.comp)}${L.catalog?` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`:""}</span><span id="timer">0:00</span></div>
-      <div class="progress" aria-hidden="true"><i style="width:${Math.round(L.idx/totalQ(L)*100)}%"></i></div>
-      <p class="qtext ${L.pending?"followup":""}" id="qtext">${esc(text)}</p>
-      ${L.pending?`<p class="hint" style="margin-top:8px">Relance de Lina sur la question : « ${esc(q[L.lang])} »</p>`:""}
-      <label for="answer" class="hint" style="display:block;margin:26px 0 8px">Votre réponse</label>
-      <textarea id="answer" placeholder="${L.lang==="en"?"Answer as you would out loud…":"Répondez comme vous le feriez à l’oral…"}"></textarea>
-      <div class="answer-tools">
-        <span class="live" id="liveInd"><i></i> <span id="wc">0 mot</span></span>
-        <div class="row">${M.mic&&(elevenServer()||sttServer()||SR)?`<button class="btn quiet" id="dictBtn" title="${elevenServer()?"Transcription : ElevenLabs Scribe":sttServer()?"Transcription : Kyutai STT (modèle CC-BY 4.0)":"Dictée du navigateur"}">Dicter ma réponse</button>`:""}<button class="btn quiet" id="replay" ${S.voice&&(synth||ttsServer(L.lang))?"":"hidden"}>Réécouter</button></div>
+  const M=S.prefs.media||{}, ag=curAgent(), total=totalQ(L), en=L.lang==="en";
+  const micOn=M.mic&&(elevenServer()||sttServer()||SR);
+  const bubble=(who,txt,cls="")=>`<div class="bubble ${who} ${cls}"><span class="who">${who==="rec"?esc(ag.name):"Vous"}</span><p>${esc(txt)}</p></div>`;
+  const history=L.turns.map(t=>bubble("rec",t.prompt)+(t.followup?bubble("rec",t.followup,"relance"):"")+(t.skipped?`<div class="bubble me skipped"><span class="who">Vous</span><p>Question passée</p></div>`:bubble("me",t.answer))).join("");
+  const current=(L.pending?bubble("rec",q[L.lang])+bubble("me",L.pending.answer):"")+`<div class="bubble rec current ${L.pending?"relance":""}"><span class="who">${esc(ag.name)}${L.pending?" · relance":""}</span><p class="qtext" id="qtext" aria-live="polite">${esc(text)}</p></div>`;
+  app.innerHTML=`<section class="studio" style="--orb:${esc(ag.color)}">
+    <aside class="stage" aria-label="${esc(ag.name)}, ${esc(ag.title)}">
+      <div class="stage-top"><span class="rec-dot" aria-hidden="true"></span><span>${en?"Live interview":"Entretien en cours"}</span><span class="stage-timer" id="timer">0:00</span></div>
+      <div class="avatar-wrap"><canvas id="avatar" width="520" height="520" aria-hidden="true"></canvas><div class="initial" aria-hidden="true">${esc(ag.name.slice(0,1))}</div></div>
+      <div class="stage-id"><b>${esc(ag.name)}</b><span>${esc(ag.title)}</span><em class="stage-state" id="stageState">${en?"Getting ready…":"Se prépare…"}</em></div>
+      <p class="captions" id="captions" aria-hidden="true"></p>
+      ${S.cam?`<div class="cam pip" id="camBox"><video id="camVideo" muted playsinline></video><span>Vous · non enregistré</span></div>`:""}
+      <div id="orb" class="orb-state idle" hidden></div>
+    </aside>
+    <div class="convo">
+      <header class="convo-head">
+        <div><b>Question ${L.idx+1} sur ${total}</b><span class="hint"> · ${esc(q.comp)}</span>${L.catalog?` <span class="src-badge" title="Question issue du référentiel officiel S2-03, version figée">Référentiel S2-03</span>`:""}</div>
+        <ol class="dots" aria-label="Progression">${Array.from({length:total},(_,i)=>`<li class="${i<L.idx?"done":i===L.idx?"now":""}"></li>`).join("")}</ol>
+      </header>
+      <div class="thread" id="thread">${history}${current}<div class="bubble me draft" id="draftBubble" hidden><span class="who">Vous · en direct</span><p id="draftText"></p></div></div>
+      <div class="composer">
+        <label for="answer" class="sr-only">Votre réponse</label>
+        <textarea id="answer" placeholder="${en?"Answer as you would out loud… or press the microphone":"Répondez comme à l’oral… ou appuyez sur le micro"}"></textarea>
+        <div class="composer-bar">
+          ${micOn?`<button class="mic-btn" id="dictBtn" title="${elevenServer()?"Transcription : ElevenLabs Scribe":sttServer()?"Transcription : Kyutai STT":"Dictée du navigateur"}"><span class="mic-ring" id="micRing" aria-hidden="true"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg><span class="mic-label">Dicter ma réponse</span></button>`:""}
+          <span class="live" id="liveInd"><i></i> <span id="wc">0 mot</span></span>
+          <button class="btn primary" id="send" disabled>${en?"Send":"Envoyer"}</button>
+        </div>
+        <div class="composer-tools">
+          <button class="link-btn" id="replay" ${S.voice&&(synth||ttsServer(L.lang))?"":"hidden"}>↻ ${en?"Replay":"Réécouter"}</button>
+          <button class="link-btn" id="skip">${L.pending?(en?"Skip follow-up":"Passer la relance"):(en?"Skip":"Passer")}</button>
+          <button class="link-btn" id="pause">${en?"Pause":"Pause"}</button>
+          <button class="link-btn danger" id="end">${en?"End interview":"Terminer"}</button>
+        </div>
       </div>
-      <div class="nav-row">
-        <div class="row"><button class="btn quiet" id="pause">Pause</button><button class="btn quiet" id="end">Terminer</button></div>
-        <div class="row"><button class="btn quiet" id="skip">${L.pending?"Passer la relance":"Passer"}</button><button class="btn primary" id="send" disabled>Envoyer</button></div>
-      </div>
-      ${L.turns.length?`<details class="transcript"><summary>Transcription (${L.turns.length} réponse${L.turns.length>1?"s":""})</summary><ol>${L.turns.map(t=>`<li><span class="who">Lina :</span> ${esc(t.prompt)}${t.followup?`<br><span class="who">Relance :</span> ${esc(t.followup)}`:""}<br><span class="who">Vous :</span> ${esc(t.answer||"(passée)")}</li>`).join("")}</ol></details>`:""}
     </div>
   </section>`;
+  const th=$("#thread"); th.scrollTop=th.scrollHeight;
   const ta=$("#answer"); ta.oninput=updateCount; ta.focus({preventScroll:true});
   ta.addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey)&&!$("#send").disabled)submitAnswer()});
   if($("#dictBtn"))$("#dictBtn").onclick=toggleDictation;
@@ -1464,7 +1542,8 @@ function interview(){
   $("#pause").onclick=pauseSession;
   $("#end").onclick=()=>{if(confirm("Terminer maintenant ? Les réponses données seront évaluées."))finish()};
   if(S.cam)startCam();
-  const ag=curAgent(), greet=!L.greeted&&L.idx===0&&!L.pending&&ag.greeting&&(ag.greeting[L.lang]||ag.greeting.fr); L.greeted=true;
+  VIZ.start(ag.color);
+  const greet=!L.greeted&&L.idx===0&&!L.pending&&ag.greeting&&(ag.greeting[L.lang]||ag.greeting.fr); L.greeted=true;
   startTimer(); setTimeout(()=>speak(greet?greet+" "+text:text,L.lang),350);
 }
 let timerH; function startTimer(){clearInterval(timerH);const t0=Date.now();timerH=setInterval(()=>{const el=$("#timer");if(!el)return clearInterval(timerH);const s=Math.floor((Date.now()-t0)/1000);el.textContent=`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`},1000)}
@@ -1759,6 +1838,56 @@ function rubric(){
 }
 
 /* =========================================================
+   Studio : avatar animé par la voix réelle, sous-titres, niveau du micro
+   ========================================================= */
+const VIZ=(()=>{
+  const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let ctx=null, an=null, data=null, raf=0, color="#2E6B64", state="idle", listening=false, level=0, micLevel=0, t0=performance.now();
+  let cap={words:[],shown:0,timer:0,audio:null};
+  const ac=()=>{if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();an=ctx.createAnalyser();an.fftSize=1024;an.smoothingTimeConstant=0.6;an.connect(ctx.destination);data=new Uint8Array(an.fftSize)}catch(e){ctx=null}}if(ctx&&ctx.state==="suspended")ctx.resume().catch(()=>{});return ctx};
+  const rms=(a)=>{if(!a)return 0;const d=new Uint8Array(a.fftSize);a.getByteTimeDomainData(d);let s=0;for(let i=0;i<d.length;i++){const v=(d[i]-128)/128;s+=v*v}return Math.sqrt(s/d.length)};
+  function draw(now){
+    const cv=$("#avatar"); if(!cv){raf=0;return}
+    const g=cv.getContext("2d"), W=cv.width, H=cv.height, cx=W/2, cy=H/2, t=(now-t0)/1000;
+    let target=0;
+    if(state==="speaking"){ target=an&&ttsAudio&&ttsAudio._viz?Math.min(1,rms(an)*3.2):0.35+0.25*Math.abs(Math.sin(t*7.3))*Math.abs(Math.sin(t*3.1)); }
+    level+=(target-level)*0.25;
+    const m=listening&&VIZ.mic?Math.min(1,rms(VIZ.mic)*5):0; micLevel+=(m-micLevel)*0.3;
+    g.clearRect(0,0,W,H);
+    const breathe=reduce?0:Math.sin(t*1.4)*4;
+    for(let i=5;i>=1;i--){
+      const r=110+i*28+breathe*(i/3)+(reduce?0:level*i*16)+(listening?micLevel*i*10:0);
+      g.beginPath();g.arc(cx,cy,r,0,Math.PI*2);g.strokeStyle=hexA(listening&&micLevel>0.05?"#F0B455":color,0.10+0.08*(6-i)+level*0.12);g.lineWidth=2+ (6-i)*1.2;g.stroke();
+    }
+    const core=96+level*26+breathe;
+    const grd=g.createRadialGradient(cx-core*0.35,cy-core*0.45,core*0.1,cx,cy,core);
+    grd.addColorStop(0,hexA("#FFFFFF",0.55));grd.addColorStop(0.35,hexA(color,0.95));grd.addColorStop(1,hexA(color,0.75));
+    g.beginPath();g.arc(cx,cy,core,0,Math.PI*2);g.fillStyle=grd;g.shadowColor=hexA(color,0.8);g.shadowBlur=40+level*60;g.fill();g.shadowBlur=0;
+    // barres de voix autour du noyau
+    if(state==="speaking"&&!reduce){const n=48;for(let i=0;i<n;i++){const a=i/n*Math.PI*2,amp=(0.3+0.7*Math.abs(Math.sin(i*1.7+t*9)))*level;const r1=core+10,r2=r1+8+amp*46;g.beginPath();g.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);g.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);g.strokeStyle=hexA("#FFFFFF",0.35+amp*0.5);g.lineWidth=3;g.lineCap="round";g.stroke()}}
+    const ring=$("#micRing"); if(ring)ring.style.transform=`scale(${1+micLevel*0.9})`;
+    raf=requestAnimationFrame(draw);
+  }
+  function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${Math.max(0,Math.min(1,a))})`}
+  function stateLabel(){const el=$("#stageState");if(!el)return;const en=S.live&&S.live.lang==="en";el.textContent=listening?(en?"Listening to you…":"Vous écoute…"):state==="speaking"?(en?"Speaking…":"Parle…"):(en?"Waiting for your answer":"Attend votre réponse");el.dataset.s=listening?"listening":state}
+  function renderCap(){const el=$("#captions");if(!el)return;el.innerHTML=cap.words.map((w,i)=>`<span class="${i<cap.shown?"on":""}">${esc(w)}</span>`).join(" ")}
+  return {
+    mic:null,
+    start(c){color=c||color;state="idle";listening=false;level=0;ac();if(!raf)raf=requestAnimationFrame(draw);stateLabel()},
+    attach(audio){try{const c=ac();if(!c||!an||c.state!=="running")return;   // jamais de voix muette : sans contexte actif, animation simulée
+      const src=c.createMediaElementSource(audio);src.connect(an);audio._viz=true}catch(e){}},
+    setState(st){state=st;stateLabel()},
+    setListening(on){listening=on;if(!on)VIZ.mic=null;stateLabel()},
+    caption(text,audio){clearInterval(cap.timer);cap={words:String(text).split(/\s+/).filter(Boolean),shown:0,audio,timer:0};renderCap();
+      if(audio){cap.timer=setInterval(()=>{const d=isFinite(audio.duration)&&audio.duration>0?audio.duration:cap.words.length/2.6;const k=Math.ceil(cap.words.length*Math.min(1,(audio.currentTime+0.15)/d));if(k!==cap.shown){cap.shown=k;renderCap()}},90)}
+      else if(!("onboundary" in SpeechSynthesisUtterance.prototype)){let i=0;cap.timer=setInterval(()=>{cap.shown=++i;renderCap();if(i>=cap.words.length)clearInterval(cap.timer)},380)}},
+    captionAt(ch){if(!cap.words.length)return;let n=0,c=0;for(const w of cap.words){c+=w.length+1;n++;if(c>ch)break}cap.shown=n;renderCap()},
+    captionEnd(){clearInterval(cap.timer);cap.shown=cap.words.length;renderCap()},
+    draft(txt){const b=$("#draftBubble"),p=$("#draftText");if(!b||!p)return;b.hidden=!txt;p.textContent=txt;const th=$("#thread");if(th)th.scrollTop=th.scrollHeight},
+  };
+})();
+
+/* =========================================================
    Administration : voix réalistes des recruteurs (bibliothèque ElevenLabs)
    ========================================================= */
 const MODEL_LABEL={eleven_v4_turbo:"Eleven v4 Turbo (le plus réaliste en temps réel)",eleven_multilingual_v2:"Eleven Multilingual v2 (très naturel)",eleven_flash_v2_5:"Eleven Flash v2.5 (le plus rapide)"};
@@ -1809,7 +1938,7 @@ function orbSVG(state="idle",name=true,agent=null){
     <circle class="core" cx="200" cy="200" r="56"/><circle class="spark" cx="200" cy="200" r="16"/></svg>
     ${name?`<div class="name">${esc(agent?agent.name:"Lina")}<small>${esc(agent?agent.title:"votre recruteuse virtuelle")}</small></div>`:""}</div>`;
 }
-function setOrb(state){const o=$("#orb");if(o){o.classList.remove("idle","speaking","listening");o.classList.add(state)}}
+function setOrb(state){const o=$("#orb");if(o){o.classList.remove("idle","speaking","listening");o.classList.add(state)}VIZ.setState(state)}
 const synth=window.speechSynthesis;
 /* Voix de Lina : Kyutai Pocket TTS via notre serveur si configuré, sinon voix du navigateur. */
 const ttsServer=(lang)=>API.mode==="remote"&&["pocket-tts","elevenlabs"].includes(API.tts)&&(API.ttsLanguages||[]).includes(lang||"fr");
@@ -1824,8 +1953,9 @@ function speak(text,lang,agentId){
 }
 function speakServer(text,lang,agentId){
   const a=new Audio(`/api/tts?lang=${lang==="en"?"en":"fr"}&agent=${encodeURIComponent(agentId||"")}&text=${encodeURIComponent(text)}`); ttsAudio=a; let started=false;
-  a.onplaying=()=>{if(ttsAudio===a){started=true;setOrb("speaking")}};
-  a.onended=()=>{if(ttsAudio===a){ttsAudio=null;setOrb("listening")}};
+  VIZ.attach(a);
+  a.onplaying=()=>{if(ttsAudio===a){started=true;setOrb("speaking");VIZ.caption(text,a)}};
+  a.onended=()=>{if(ttsAudio===a){ttsAudio=null;setOrb("listening");VIZ.captionEnd()}};
   a.onerror=()=>{if(ttsAudio!==a)return;ttsAudio=null;if(!started&&synth)speakBrowser(text,lang,agentId);else setOrb("listening")};
   a.play().catch(()=>{if(ttsAudio===a){ttsAudio=null;setOrb("listening")}});
 }
@@ -1833,7 +1963,8 @@ function speakBrowser(text,lang,agentId){
   if(!synth){setOrb("listening");return}
   synth.cancel(); const u=new SpeechSynthesisUtterance(text); u.lang=lang==="en"?"en-GB":"fr-FR"; const bv=BROWSER_VOICE[agentId]||{pitch:1,rate:1.02}; u.rate=bv.rate; u.pitch=bv.pitch;
   const v=synth.getVoices().find(v=>v.lang.startsWith(u.lang.slice(0,2))); if(v)u.voice=v;
-  u.onstart=()=>setOrb("speaking"); u.onend=()=>setOrb("listening"); u.onerror=()=>setOrb("listening"); synth.speak(u);
+  u.onstart=()=>{setOrb("speaking");VIZ.caption(text,null)}; u.onend=()=>{setOrb("listening");VIZ.captionEnd()}; u.onerror=()=>setOrb("listening");
+  u.onboundary=(e)=>VIZ.captionAt(e.charIndex); synth.speak(u);
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition; let rec=null;
 function stopVoice(){stopTts();try{synth&&synth.cancel()}catch(e){} if(rec){try{rec.stop()}catch(e){} rec=null} kyuAbort(); elAbort(); stopCam()}
@@ -1848,7 +1979,7 @@ process(inputs){const ch=inputs[0]&&inputs[0][0];if(!ch)return true;
  return true}
 push(v){this.b[this.n++]=v;if(this.n===this.F){this.port.postMessage(this.b.slice(0));this.n=0}}}
 registerProcessor("pcm24k",P)`;
-function kyuUi(label,on){const btn=$("#dictBtn"),live=$("#liveInd");if(btn){btn.textContent=label;btn.disabled=label.endsWith("…")}if(live){live.classList.toggle("on",!!on)}}
+function kyuUi(label,on){const btn=$("#dictBtn"),live=$("#liveInd");if(btn){const l=btn.querySelector(".mic-label");if(l)l.textContent=label;else btn.textContent=label;btn.disabled=label.endsWith("…");btn.classList.toggle("on",!!on)}if(live){live.classList.toggle("on",!!on)}VIZ.setListening(!!on)}
 function kyuAbort(){const k=KYU;try{k.node&&k.node.disconnect()}catch(e){}try{k.ctx&&k.ctx.close()}catch(e){}try{k.stream&&k.stream.getTracks().forEach(t=>t.stop())}catch(e){}try{k.ws&&k.ws.readyState<2&&k.ws.close()}catch(e){}Object.assign(KYU,{ws:null,ctx:null,stream:null,node:null,state:"idle"})}
 async function kyuStart(){
   const ta=$("#answer"); KYU.state="connecting"; kyuUi("Connexion…",false);
@@ -1859,7 +1990,7 @@ async function kyuStart(){
   let ready=false;
   ws.onmessage=async(e)=>{let m;try{m=JSON.parse(e.data)}catch(_){return}
     if(m.type==="ready"&&!ready){ready=true;try{await kyuAudio()}catch(err){toast("Capture audio impossible sur ce navigateur.");kyuAbort();kyuUi("Dicter ma réponse",false)}}
-    else if(m.type==="word"){KYU.words.push(m.text);const t=$("#answer");if(t){t.value=KYU.base+KYU.words.join(" ").replace(/\s+([,.;:!?])/g,"$1");updateCount()}}
+    else if(m.type==="word"){KYU.words.push(m.text);const t=$("#answer");if(t){t.value=KYU.base+KYU.words.join(" ").replace(/\s+([,.;:!?])/g,"$1");updateCount();VIZ.draft(t.value)}}
     else if(m.type==="vad"){const l=$("#liveInd span:last-child");if(l)l.textContent="Pause détectée"}
     else if(m.type==="error"){toast(m.message||"Transcription interrompue.")}
     else if(m.type==="done"){kyuAbort();kyuUi("Dicter ma réponse",false)}};
@@ -1873,6 +2004,7 @@ async function kyuAudio(){
   KYU.ctx=ctx; const url=URL.createObjectURL(new Blob([PCM_WORKLET],{type:"text/javascript"}));
   await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
   const src=ctx.createMediaStreamSource(KYU.stream);
+  const an=ctx.createAnalyser(); an.fftSize=512; src.connect(an); VIZ.mic=an;
   const node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/24000,frame:1920}}); KYU.node=node;
   node.port.onmessage=(e)=>{if(KYU.ws&&KYU.ws.readyState===1&&KYU.state==="live")KYU.ws.send(e.data.buffer)};
   const mute=ctx.createGain(); mute.gain.value=0; src.connect(node); node.connect(mute); mute.connect(ctx.destination);
@@ -1889,7 +2021,7 @@ function kyuStop(){
 const elevenServer=()=>API.mode==="remote"&&API.stt==="elevenlabs"&&API.sttMode==="token"&&!!window.WebSocket&&!!(window.AudioContext||window.webkitAudioContext);
 const EL={ws:null,ctx:null,stream:null,node:null,state:"idle",base:"",committed:[],partial:""};
 function elAbort(){const k=EL;try{k.node&&k.node.disconnect()}catch(e){}try{k.ctx&&k.ctx.close()}catch(e){}try{k.stream&&k.stream.getTracks().forEach(t=>t.stop())}catch(e){}try{k.ws&&k.ws.readyState<2&&k.ws.close()}catch(e){}Object.assign(EL,{ws:null,ctx:null,stream:null,node:null,state:"idle"})}
-function elRender(){const t=$("#answer");if(!t)return;t.value=(EL.base+[...EL.committed,EL.partial].filter(Boolean).join(" ")).replace(/\s+([,.;:!?])/g,"$1");updateCount()}
+function elRender(){const t=$("#answer");if(!t)return;t.value=(EL.base+[...EL.committed,EL.partial].filter(Boolean).join(" ")).replace(/\s+([,.;:!?])/g,"$1");updateCount();VIZ.draft(t.value)}
 function toB64(i16){const u=new Uint8Array(i16.buffer);let s="";for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)}
 async function elStart(){
   EL.state="connecting"; kyuUi("Connexion…",false);
@@ -1912,6 +2044,7 @@ async function elAudio(rate){
   const AC=window.AudioContext||window.webkitAudioContext; let ctx; try{ctx=new AC({sampleRate:rate})}catch(e){ctx=new AC()}
   EL.ctx=ctx; const url=URL.createObjectURL(new Blob([PCM_WORKLET],{type:"text/javascript"})); await ctx.audioWorklet.addModule(url); URL.revokeObjectURL(url);
   const src=ctx.createMediaStreamSource(EL.stream), node=new AudioWorkletNode(ctx,"pcm24k",{processorOptions:{ratio:ctx.sampleRate/rate,frame:rate/10}}); EL.node=node;
+  const an=ctx.createAnalyser(); an.fftSize=512; src.connect(an); VIZ.mic=an;
   node.port.onmessage=(e)=>{if(!(EL.ws&&EL.ws.readyState===1&&EL.state==="live"))return;const f=e.data,i16=new Int16Array(f.length);
     for(let i=0;i<f.length;i++){const v=Math.max(-1,Math.min(1,f[i]));i16[i]=v<0?v*0x8000:v*0x7FFF}
     EL.ws.send(JSON.stringify({message_type:"input_audio_chunk",audio_base_64:toB64(i16),commit:false,sample_rate:rate}))};
@@ -1934,7 +2067,7 @@ function browserDictation(){
   const btn=$("#dictBtn"), live=$("#liveInd"), ta=$("#answer"); if(rec){rec.stop();return}
   rec=new SR(); rec.lang=S.live.lang==="en"?"en-GB":"fr-FR"; rec.continuous=true; rec.interimResults=true;
   const base=ta.value?ta.value.trim()+" ":"";
-  rec.onresult=(e)=>{let t="";for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;ta.value=base+t;updateCount()};
+  rec.onresult=(e)=>{let t="";for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;ta.value=base+t;updateCount();VIZ.draft(ta.value)};
   rec.onstart=()=>{btn.textContent="Arrêter la dictée";live.classList.add("on")};
   rec.onend=()=>{rec=null;btn.textContent="Dicter ma réponse";live.classList.remove("on")};
   rec.onerror=(e)=>toast(e.error==="not-allowed"?"Micro refusé par le navigateur. Vous pouvez répondre au clavier.":"Dictée interrompue. Réessayez ou répondez au clavier.");
