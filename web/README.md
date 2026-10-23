@@ -90,3 +90,24 @@ Page `/login` : expérience liquid glass avec fond WebGL animé et fallback grad
 Le frontend utilise maintenant `@supabase/ssr` (cookies partagés navigateur/serveur), `src/proxy.ts` pour les routes protégées, et `public.candidate_profiles` avec RLS. Les formulaires d'onboarding sauvegardent désormais prénom/nom, situation, expérience, objectif professionnel, priorités et langue dans Supabase ; l'accès au dashboard lit les valeurs depuis la base, et le bouton « Se déconnecter » met fin à la session. Connexion par email/mot de passe ou OAuth : compte utilisateur existant → dashboard si profil complet, sinon onboarding. Les rôles admin et coach sont stockés dans `app_user_roles`, table RLS en lecture seule pour l'utilisateur courant ; interfaces réservées laissées en placeholder.
 
 La création de comptes Auth Demo doit être effectuée via la clé administrative **hors frontend** : `docs/auth/TEST_ACCOUNTS.md` et `web/scripts/provision_demo_accounts.mjs`. Les accès ne sont pas encore générés sans clé administrative. Les tests navigateur sans Auth de l'ancien prototype ne sont plus représentatifs des pages maintenant protégées ; utiliser `web/tests/test_auth_live_routes.py` et `web/tests/test_login_browser.py` pour l'accès anonyme et les formulaires.
+
+## Deux façons de lancer l'application (même code)
+
+| | Local (Achraf) | Cloudflare (Othmane) |
+|---|---|---|
+| Lancer | `cd web && npm install && npm run dev` | Worker `ai-interview-web` (voir ci-dessous) |
+| Simulateur + voix de Lina | laboratoire local `127.0.0.1:8765` (ou `LAB_UPSTREAM_URL`) | Worker `ai-interview-platform`, liaison interne `PLATFORM` |
+| Secret du pont | facultatif | `BRIDGE_SECRET` obligatoire, identique sur les deux Workers |
+
+Le pont `src/app/api/interview/[action]/route.ts` choisit tout seul : liaison `PLATFORM` si elle existe (Cloudflare), sinon le laboratoire local. Aucune variable n'est à changer pour passer de l'un à l'autre. `OPENNEXT_CLOUDFLARE=1` (posé par `npm run cf:build`) désactive uniquement `cacheComponents` pour Cloudflare ; sur un Mac, tout reste comme avant. Les deux builds (`npm run build` et `npm run cf:build`) passent sur la même branche.
+
+### Créer le Worker `ai-interview-web` sur Cloudflare (une seule fois)
+
+Workers & Pages › Create › Import a repository › `DFS-OZENZAMY/ai-interview-platform`, branche `main` :
+- Nom : `ai-interview-web` ; répertoire racine : `web` ; build : `npm run cf:build` ; déploiement : `npx opennextjs-cloudflare deploy`.
+- Variables de build : `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (projet Supabase d'Achraf).
+- Secret `BRIDGE_SECRET` : identique sur `ai-interview-web` et `ai-interview-platform`.
+- Supabase › Authentication › URL Configuration : ajouter `https://ai-interview-web.<compte>.workers.dev/auth/callback`.
+
+Le nouveau design est servi par ce Worker, pas par `ai-interview-platform` (qui garde l'ancienne interface de laboratoire).
+
