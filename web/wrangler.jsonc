@@ -1,12 +1,19 @@
 {
   // Application candidat d'Achraf (Next.js) sur Cloudflare Workers, via OpenNext.
   // Répertoire racine du build Cloudflare : web · build : npx opennextjs-cloudflare build · déploiement : npx opennextjs-cloudflare deploy
-  "name": "ai-interview-plateform",
+  "name": "ai-interview-platform",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   // Simulateur + voix de Lina : Worker de la plateforme, appelé en interne (pas d'URL publique nécessaire).
   "services": [{ "binding": "PLATFORM", "service": "ai-interview-platform" }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Migration pour autoriser la suppression du Durable Object LinaVoice obsolète
+  "migrations": [
+    {
+      "tag": "v2",
+      "deleted_classes": ["LinaVoice"]
+    }
+  ]
 }
