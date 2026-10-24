@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerAuthClient } from "@/lib/supabase-server";
 import { getAppRole } from "@/lib/profile";
 import { sameOrigin, upstream } from "@/lib/platform-upstream";
+/* Cause précise de l'échec de la voix, sans fuite de secret : le navigateur bascule sur sa propre voix et la cause reste lisible. */
+async function voiceFailure(response:Response){
+ let code="tts_failed";try{const j=await response.clone().json();if(typeof j?.error==="string")code=j.error;}catch{}
+ const reason=response.status===401||response.status===403?"bridge_secret":response.status===503?"voice_unavailable":code;
+ return NextResponse.json({error:"Voix de Lina indisponible",reason},{status:503,headers:{"x-voice-error":reason,"Cache-Control":"no-store"}});
+}
 export async function GET(request:NextRequest,{params}:{params:Promise<{action:string}>}){
  const {action}=await params;
  if(action!=="tts")return NextResponse.json({error:"Action inconnue"},{status:404});
@@ -17,7 +23,7 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{action:s
  try{
   const response=await upstream(`/api/ai/tts`,{method:"POST",headers:{"content-type":"application/json"},
    body:JSON.stringify({text,locale}),cache:"no-store",signal:AbortSignal.timeout(35000)});
-  if(!response.ok)return NextResponse.json({error:"Synthèse vocale locale indisponible"},{status:503});
+  if(!response.ok)return voiceFailure(response);
   return new NextResponse(await response.arrayBuffer(),{headers:{"Content-Type":"audio/mpeg","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
  }catch{return NextResponse.json({error:"Serveur vocal indisponible"},{status:503});}
 }
@@ -41,7 +47,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{action:
   const path=action==="tts"?"/api/ai/tts":action==="transcribe"?"/api/ai/transcribe":`/api/ai/session/${action}`;
   const response=await upstream(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),cache:"no-store",signal:AbortSignal.timeout(35000)});
   if(action==="tts"){
-   if(!response.ok)return NextResponse.json({error:"Synthèse vocale locale indisponible."},{status:response.status});
+   if(!response.ok)return voiceFailure(response);
    return new NextResponse(await response.arrayBuffer(),{status:200,headers:{"Content-Type":"audio/mpeg","Cache-Control":"no-store"}});
   }
   const text=await response.text();

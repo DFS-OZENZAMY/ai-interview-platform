@@ -674,7 +674,7 @@ async function aiFeedback(req, env, user) {
 /* Routeur */
 async function route(req, env, url, ctx) {
   const p = url.pathname, m = req.method;
-  if (p === "/api/health") return json({ ok: true, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", sttMode: env.STT ? env.STT.mode || "relay" : null, tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [], agentVoices: !!(env.TTS && env.TTS.perAgentVoice), ttsModel: env.TTS && env.TTS.model ? env.TTS.model : null });
+  if (p === "/api/health") return json({ ok: true, bridgeSecret: String(env.BRIDGE_SECRET || "").length >= 24, elevenlabsKey: !!env.ELEVENLABS_API_KEY, groqKey: !!env.GROQ_API_KEY, ai: !!env.AI, db: !!env.DB, coachSignup: !!env.COACH_INVITE_CODE, runtime: env.RUNTIME || "unknown", store: env.DB ? env.DB.name : null, aiProvider: env.AI ? env.AI.name : null, questionSource: env.QUESTIONS ? env.QUESTIONS.name : "builtin", stt: env.STT ? env.STT.name : "browser", sttMode: env.STT ? env.STT.mode || "relay" : null, tts: env.TTS ? env.TTS.name : "browser", ttsLanguages: env.TTS ? env.TTS.languages : [], agentVoices: !!(env.TTS && env.TTS.perAgentVoice), ttsModel: env.TTS && env.TTS.model ? env.TTS.model : null });
 
   // Protection CSRF : écritures uniquement depuis la même origine, en JSON.
   if (m !== "GET") {

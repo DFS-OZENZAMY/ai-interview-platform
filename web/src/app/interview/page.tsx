@@ -102,6 +102,19 @@ export default function InterviewPage(){
  useEffect(()=>{const t=setInterval(()=>{if(sessionRef.current)setElapsed(s=>s+1)},1000);return()=>clearInterval(t)},[]);
  useEffect(()=>{sessionRef.current=["speaking","listening","thinking"].includes(state);},[state]);
  useEffect(()=>()=>{recognition.current?.stop();questionAudio.current?.pause();if(questionAudioUrl.current)URL.revokeObjectURL(questionAudioUrl.current);window.speechSynthesis?.cancel();if(introInterval.current)clearInterval(introInterval.current);if(introTransitionTimer.current)clearTimeout(introTransitionTimer.current);introAudio.current?.pause();if(silenceTimer.current)clearTimeout(silenceTimer.current);},[]);
+
+ /* Plan B : si la voix de Lina (serveur) est indisponible, le navigateur lit la question — l'entretien reste audible. */
+ function browserSpeak(text:string,locale:string,sequence:number,total:number):boolean{
+  if(typeof window==="undefined"||!("speechSynthesis" in window)||typeof SpeechSynthesisUtterance==="undefined")return false;
+  const synth=window.speechSynthesis;synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);const en=locale==="en";u.lang=en?"en-US":"fr-FR";u.rate=0.97;
+  const voices=synth.getVoices().filter(v=>v.lang.toLowerCase().startsWith(en?"en":"fr"));
+  const voice=voices.find(v=>/natural|neural|online|google|am[eé]lie|audrey|thomas|denise/i.test(v.name))??voices[0];if(voice)u.voice=voice;
+  u.onstart=()=>{if(sequence!==voiceSequence.current)return;setQuestionReveal(total);setVoiceNotice("Voix du navigateur : la voix de Lina est momentanément indisponible.");};
+  u.onend=()=>{if(sequence!==voiceSequence.current)return;setQuestionReveal(total);setState("listening");setVoiceNotice("");if(handsFreeRef.current)queueMicrotask(()=>autoListenRef.current());};
+  u.onerror=()=>{if(sequence!==voiceSequence.current)return;setQuestionReveal(total);setState("listening");setVoiceNotice("La lecture a échoué. Essayez « Écouter la question ».");};
+  synth.speak(u);return true;
+ }
  function speak(text:string,locale:string){
   stopDictation();stopQuestionAudio();setQuestionReveal(0);
   const total=segmentInterviewerText(text).length;
@@ -127,6 +140,7 @@ export default function InterviewPage(){
   };
   audio.onerror=()=>{
    if(sequence!==voiceSequence.current)return;
+   if(browserSpeak(text,locale,sequence,total))return;
    setQuestionReveal(total);setState("listening");
    setVoiceNotice("La lecture a échoué. Essayez « Écouter la question ».");
   };
