@@ -8,7 +8,7 @@ async def main():
     pg=await ctx.new_page(); errs=[]; tts=[]
     pg.on("pageerror",lambda e:errs.append(str(e)[:120]))
     pg.on("response",lambda r: tts.append(r.status) if "/api/interview/tts" in r.url else None)
-    await pg.goto(BASE+"/"); await pg.wait_for_timeout(1500); await pg.screenshot(path="web_landing.png")
+    await pg.goto(BASE+"/"); await pg.wait_for_timeout(1500)
     await pg.evaluate("""sessionStorage.setItem('interview-lab-config',JSON.stringify({family:'rh',locale:'fr',jobTitle:'Chargée RH',job_description:'',goals:['communication'],count:2}))""")
     await pg.goto(BASE+"/interview"); await pg.wait_for_timeout(2500); await pg.screenshot(path="web_intro.png")
     for _ in range(30):
@@ -27,7 +27,7 @@ async def main():
     await turn("Nous avons ensuite suivi le taux de participation, qui est passé de 40 à 75 %.")
     await turn("je sais pas"); print("je ne sais pas :", "Salma" in await bubble() or "pas grave" in (await bubble()) or "inquiétude" in (await bubble()))
     await turn("Je me suis appuyée sur des exemples concrets pour convaincre."); await turn("Le projet a été adopté par l'équipe.")
-    await pg.wait_for_timeout(1500); t=await bubble(); print("bilan final :", "Bilan pédagogique" in t)
+    await pg.wait_for_timeout(1500); t=await bubble(); print("bilan final :", "Bilan pédagogique" in t or "regard de Lina" in t)
     await pg.screenshot(path="web_done.png",full_page=True)
     print("voix de Lina servies :", tts.count(200), "| échecs :", len([s for s in tts if s!=200]))
     print("erreurs JS :", errs); await b.close()

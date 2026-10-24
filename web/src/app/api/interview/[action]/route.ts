@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAuthClient } from "@/lib/supabase-server";
-import { getAppRole, readProfile } from "@/lib/profile";
+import { getAppRole } from "@/lib/profile";
 /* Simulateur : sur Cloudflare, le Worker de la plateforme (liaison PLATFORM, moteur + voix de Lina) ;
    en local, le laboratoire d'Achraf sur 127.0.0.1:8765 comme avant (ou LAB_UPSTREAM_URL). */
 const LOCAL_UPSTREAM = process.env.LAB_UPSTREAM_URL || "http://127.0.0.1:8765";
@@ -49,7 +49,9 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{action:
  if(!payload||typeof payload!=="object"||Array.isArray(payload))return NextResponse.json({error:"Données invalides"},{status:400});
  try{
   if(action==="start"){   // Lina appelle le candidat par son prénom (profil Supabase), comme une vraie recruteuse
-   try{const saved=await readProfile(client,user.id);const name=saved?.profile.firstName?.trim();if(name)(payload as Record<string,unknown>).candidate_name=name.slice(0,40);}catch{}
+   // Lecture directe du prénom : readProfile() s'appuie sur un module « use client », inutilisable côté serveur.
+   try{const {data}=await client.from("candidate_profiles").select("first_name").eq("user_id",user.id).maybeSingle();
+    const name=typeof data?.first_name==="string"?data.first_name.trim():"";if(name)(payload as Record<string,unknown>).candidate_name=name.slice(0,40);}catch{}
   }
   const path=action==="tts"?"/api/ai/tts":action==="transcribe"?"/api/ai/transcribe":`/api/ai/session/${action}`;
   const response=await upstream(path,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload),cache:"no-store",signal:AbortSignal.timeout(35000)});

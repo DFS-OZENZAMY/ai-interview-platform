@@ -1,12 +1,19 @@
 {
-  // Application candidat d'Achraf (Next.js) sur Cloudflare Workers, via OpenNext.
-  // Répertoire racine du build Cloudflare : web · build : npx opennextjs-cloudflare build · déploiement : npx opennextjs-cloudflare deploy
+  // Worker unique : application Next.js d'Achraf (OpenNext) + plateforme (simulateur, Lina, voix, base D1).
+  // Répertoire racine du build Cloudflare : web · build : npm run cf:build · déploiement : npx opennextjs-cloudflare deploy
   "name": "ai-interview-platform",
-  "main": ".open-next/worker.js",
+  "main": "worker.ts",
   "compatibility_date": "2026-09-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
-  // Simulateur + voix de Lina : Worker de la plateforme, appelé en interne (pas d'URL publique nécessaire).
+  // Base de la plateforme (comptes, sessions, voix des recruteurs…) : la même que le Worker existant.
+  "d1_databases": [{ "binding": "DB", "database_name": "ai-interview-poc" }],
+  "ai": { "binding": "AI" },
+  // Le pont d'Achraf (/api/interview/*) appelle le simulateur et la voix de Lina sur ce même Worker.
   "services": [{ "binding": "PLATFORM", "service": "ai-interview-platform" }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Conserver les variables et secrets saisis dans le tableau de bord (clés Groq, ElevenLabs, Supabase…).
+  "keep_vars": true,
+  "vars": { "TTS_PROVIDER": "elevenlabs", "STT_PROVIDER": "elevenlabs" },
+  "previews": { "ai": { "binding": "AI" } }
 }
