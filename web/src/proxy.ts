@@ -1,21 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { AUTH_PROVIDER } from "@/lib/auth-provider";
+import { createPlatformClient } from "@/lib/platform-auth";
+import { serverCall } from "@/lib/platform-upstream";
 
 export async function proxy(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return NextResponse.next({ request });
   let response = NextResponse.next({ request });
-  const client = createServerClient(url, key, {
-    cookies: {
-      getAll() { return request.cookies.getAll(); },
-      setAll(items) {
-        items.forEach(({ name, value }) => request.cookies.set(name, value));
-        response = NextResponse.next({ request });
-        items.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+  let client;
+  if (AUTH_PROVIDER === "platform") {
+    client = createPlatformClient(serverCall(request.headers.get("cookie") ?? ""));
+  } else {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return NextResponse.next({ request });
+    client = createServerClient(url, key, {
+      cookies: {
+        getAll() { return request.cookies.getAll(); },
+        setAll(items) {
+          items.forEach(({ name, value }) => request.cookies.set(name, value));
+          response = NextResponse.next({ request });
+          items.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        },
       },
-    },
-  });
+    });
+  }
   const { data, error } = await client.auth.getUser();
   const protectedRoute = ["/dashboard", "/onboarding", "/preparation", "/role-preview"].some(
     p => request.nextUrl.pathname === p || request.nextUrl.pathname.startsWith(p + "/")

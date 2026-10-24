@@ -111,3 +111,16 @@ Workers & Pages › Create › Import a repository › `DFS-OZENZAMY/ai-intervie
 
 Le nouveau design est servi par ce Worker, pas par `ai-interview-platform` (qui garde l'ancienne interface de laboratoire).
 
+## Inscription et connexion : deux moteurs, choisis au déploiement
+
+| Moteur | Quand | Ce qu'il faut |
+|---|---|---|
+| `platform` | **défaut sur Cloudflare** ; aussi si Supabase n'est pas configuré | rien : les comptes vivent dans la base D1 (ou SQLite/Postgres sur Node) de la plateforme |
+| `supabase` | si `NEXT_PUBLIC_SUPABASE_*` sont renseignées (hors Cloudflare), ou `NEXT_PUBLIC_AUTH_PROVIDER=supabase` | projet Supabase, migrations de `supabase/migrations`, URL de redirection `/auth/callback` |
+
+- Forcer un moteur : variable de **build** `NEXT_PUBLIC_AUTH_PROVIDER=platform|supabase` (figée à la construction : changer de moteur = relancer le build).
+- Le code des pages est identique : `src/lib/platform-auth.ts` fournit un client compatible Supabase (connexion, inscription, session, profil, résultats) branché sur `/api/auth/*` et `/api/web/doc/*` de la plateforme.
+- Sur Cloudflare, `worker.ts` envoie ces chemins directement à la plateforme (même Worker, même base D1). Ailleurs (Mac, Vercel, Node), l'application les relaie vers `LAB_UPSTREAM_URL` : lance `node poc/server/hosts/node.js` (port 8080) et mets `LAB_UPSTREAM_URL=http://127.0.0.1:8080`.
+- Limites du moteur `platform` : pas de connexion Google ni de réinitialisation du mot de passe par e-mail (boutons masqués) ; les comptes coach/admin se créent côté plateforme (`COACH_INVITE_CODE`, `ADMIN_EMAILS`).
+- Tests : `poc/tests/web_platform_auth_test.mts` (adaptateur, 13 vérifications).
+

@@ -1,8 +1,12 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { AUTH_PROVIDER } from "@/lib/auth-provider";
+import { createPlatformClient } from "@/lib/platform-auth";
+import { serverCall } from "@/lib/platform-upstream";
 
 export async function getServerAuthClient() {
+  if (AUTH_PROVIDER === "platform") return createPlatformClient(serverCall((await cookies()).getAll().map(c => `${c.name}=${c.value}`).join("; ")));
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;

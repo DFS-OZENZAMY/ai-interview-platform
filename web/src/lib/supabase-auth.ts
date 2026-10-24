@@ -1,10 +1,13 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { AUTH_PROVIDER } from "@/lib/auth-provider";
+import { browserCall, createPlatformClient } from "@/lib/platform-auth";
 
 /** Session-aware client shared by login, onboarding and dashboard. Public key only. */
 let browserClient: SupabaseClient | null = null;
 
 export function getAuthClient(): SupabaseClient | null {
+  if (AUTH_PROVIDER === "platform") return (browserClient ??= createPlatformClient(browserCall));
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;

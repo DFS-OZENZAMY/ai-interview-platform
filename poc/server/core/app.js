@@ -42,6 +42,7 @@ export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS login_attempts (email TEXT NOT NULL, at TEXT NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS idx_login_attempts ON login_attempts(email, at)`,
   `CREATE TABLE IF NOT EXISTS onboarding_drafts (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, step INTEGER NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS web_docs (user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, kind TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_id, kind))`,
   `CREATE TABLE IF NOT EXISTS candidate_profiles (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, version TEXT NOT NULL, data TEXT NOT NULL, seniority TEXT NOT NULL, target_job TEXT NOT NULL, completed_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS catalog_links (session_id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, source TEXT NOT NULL, catalog_ref TEXT NOT NULL, slots TEXT NOT NULL, asked INTEGER NOT NULL DEFAULT 0, turns TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL CHECK (status IN ('active','done')), created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS agent_voices (agent_id TEXT PRIMARY KEY, voice_id TEXT NOT NULL, voice_name TEXT NOT NULL, source TEXT NOT NULL, updated_by TEXT, updated_at TEXT NOT NULL)`,
@@ -183,12 +184,39 @@ async function deleteAccount(user, env) {
     env.DB.prepare("DELETE FROM interview_sessions WHERE candidate_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM consents WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM onboarding_drafts WHERE user_id = ?").bind(user.id),
+    env.DB.prepare("DELETE FROM web_docs WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM candidate_profiles WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM coach_profiles WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM auth_sessions WHERE user_id = ?").bind(user.id),
     env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
   ]);
   return json({ ok: true }, 200, { "set-cookie": sessionCookie("", 0) });
+}
+
+
+/* Données de l'application web (profil d'onboarding, résultats) quand elle utilise les comptes de la plateforme
+   plutôt que Supabase. Un document JSON par utilisateur et par type ; les résultats sont en lecture seule côté client. */
+const WEB_DOC_KINDS = { profile: { writable: true, empty: null }, results: { writable: false, empty: [] } };
+async function webDoc(req, user, env, kind) {
+  const spec = WEB_DOC_KINDS[kind];
+  if (!spec) throw new HttpError(404, "unknown_doc", "Document inconnu.");
+  need(user);
+  if (req.method === "GET") {
+    const row = await env.DB.prepare("SELECT data FROM web_docs WHERE user_id = ? AND kind = ?").bind(user.id, kind).first();
+    let data = spec.empty; try { if (row) data = JSON.parse(row.data); } catch { /* document illisible : on repart de zéro */ }
+    return json({ data });
+  }
+  if (!spec.writable) throw new HttpError(403, "read_only", "Ce document n’est pas modifiable.");
+  const b = await body(req);
+  if (!b || typeof b.data !== "object" || b.data === null || Array.isArray(b.data)) throw new HttpError(400, "bad_doc", "Document invalide.");
+  const text = JSON.stringify(b.data);
+  if (text.length > 20000) throw new HttpError(413, "doc_too_large", "Document trop volumineux.");
+  const t = now();
+  const exists = await env.DB.prepare("SELECT 1 FROM web_docs WHERE user_id = ? AND kind = ?").bind(user.id, kind).first();
+  await (exists
+    ? env.DB.prepare("UPDATE web_docs SET data = ?, updated_at = ? WHERE user_id = ? AND kind = ?").bind(text, t, user.id, kind)
+    : env.DB.prepare("INSERT INTO web_docs (user_id, kind, data, updated_at) VALUES (?,?,?,?)").bind(user.id, kind, text, t)).run();
+  return json({ ok: true });
 }
 
 /* Simulations (candidat) */
@@ -668,6 +696,7 @@ async function route(req, env, url, ctx) {
   const user = await currentUser(req, env);
   if (p === "/api/auth/me" && m === "GET") return json({ user: user ? { ...user, isAdmin: isAdmin(user, env) } : null });
   if (p === "/api/me" && m === "DELETE") return deleteAccount(need(user), env);
+  if (p.startsWith("/api/web/doc/") && (m === "GET" || m === "PUT")) return webDoc(req, user, env, p.slice("/api/web/doc/".length));
 
   let mm;
   if (p === "/api/onboarding" && m === "GET") return getOnboarding(need(user, "candidate"), env);

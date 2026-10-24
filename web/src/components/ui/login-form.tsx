@@ -7,6 +7,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles, AudioLines, CheckCircle2 } from "lucide-react";
 
 import { getAuthClient } from "@/lib/supabase-auth";
+import { AUTH_PROVIDER, supabaseConfigured } from "@/lib/auth-provider";
 import { getAppRole, readProfile } from "@/lib/profile";
 
 type Mode = "signin" | "signup" | "reset";
@@ -21,7 +22,8 @@ export function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
   const reducedMotion = useReducedMotion();
-  const ready = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY));
+  const platformAuth = AUTH_PROVIDER === "platform";
+  const ready = platformAuth || supabaseConfigured;
 
   function switchMode(next: Mode) {
     setMode(next); setMessage(null); setPassword("");
@@ -170,7 +172,7 @@ export function LoginForm() {
               <div>
                 <div className="mb-2 flex items-center justify-between gap-3">
                   <label htmlFor="auth-password" className="text-sm font-semibold text-[#2A3555]">Mot de passe</label>
-                  {mode === "signin" && <button type="button" onClick={()=>switchMode("reset")} className="rounded-lg text-xs font-medium text-[#7556D9] underline-offset-4 hover:underline">Mot de passe oublié ?</button>}
+                  {mode === "signin" && !platformAuth && <button type="button" onClick={()=>switchMode("reset")} className="rounded-lg text-xs font-medium text-[#7556D9] underline-offset-4 hover:underline">Mot de passe oublié ?</button>}
                 </div>
                 <div className="flex min-h-12 items-center gap-3 rounded-xl border border-[#DCE0EF] bg-[#F9FAFF] px-4 transition-colors focus-within:border-[#885BEE] focus-within:ring-2 focus-within:ring-[#885BEE]/15">
                   <LockKeyhole size={18} className="shrink-0 text-[#8794B2]" aria-hidden="true"/>
@@ -184,6 +186,7 @@ export function LoginForm() {
                 </div>
               </div>
             )}
+            {platformAuth && mode === "signup" && <p className="text-xs leading-5 text-[#6F7C99]">En créant un compte, vous acceptez que vos réponses d’entretien soient traitées pour vous entraîner et générer votre bilan.</p>}
             {message && <p role={message.type === "error" ? "alert" : "status"}
               className={message.type === "error" ? "rounded-xl border border-rose-300/40 bg-rose-900/35 p-3 text-sm leading-6 text-rose-100" : "rounded-xl border border-emerald-300/40 bg-emerald-950/40 p-3 text-sm leading-6 text-emerald-100"}>{message.text}</p>}
             <button type="submit" disabled={busy || !ready}
@@ -192,7 +195,7 @@ export function LoginForm() {
               {!busy && <ArrowRight size={18}/>}
             </button>
           </form>
-          {mode !== "reset" && <>
+          {mode !== "reset" && !platformAuth && <>
             <div className="my-6 flex items-center gap-3 text-xs text-[#8B95AC]">
               <div className="h-px flex-1 bg-[#E1E4F0]"/>ou continuer avec<div className="h-px flex-1 bg-[#E1E4F0]"/>
             </div>
