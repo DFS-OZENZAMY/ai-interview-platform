@@ -8,12 +8,5 @@
   "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
   // Simulateur + voix de Lina : Worker de la plateforme, appelé en interne (pas d'URL publique nécessaire).
   "services": [{ "binding": "PLATFORM", "service": "ai-interview-platform" }],
-  "observability": { "enabled": true },
-  // Migration pour autoriser la suppression du Durable Object LinaVoice obsolète
-  "migrations": [
-    {
-      "tag": "v2",
-      "deleted_classes": ["LinaVoice"]
-    }
-  ]
+  "observability": { "enabled": true }
 }
